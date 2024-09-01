@@ -13,7 +13,7 @@ Each JSON command is packed in a frame of the following format:
 - 2 bytes: 0xFF 0xAA
 - 2 bytes: Payload length (little endian)
 - The JSON itself
-- 2 bytes: A CRC code of the JSON
+- 2 bytes: CRC-16/MCRF4XX code of the JSON
 - 1 byte: 0xFE
 
 RPC
