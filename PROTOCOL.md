@@ -1,12 +1,12 @@
 Anycubic ACE Pro Protocol
--------------------------
+=========================
 
 The ACE Pro talks over as USB CDC device using a JSON API.
 
 **WARNING**: None of this has been tested and may be entirely wrong.
 
 Framing
--------
+=======
 
 Each JSON command is packed in a frame of the following format:
 
@@ -17,7 +17,7 @@ Each JSON command is packed in a frame of the following format:
 - 1 byte: 0xFE
 
 RPC
----
+===
 
 Each request is sent to the ACE Pro containing the following JSON data:
 
@@ -33,7 +33,7 @@ Each response is sent from the ACE containing the following JSON data:
 - msg: Method-specific message
 
 Methods
--------
+=======
 
 This section documents the methods you can call and the data you'll get
 back. For values not known, static values are listed.
@@ -42,7 +42,7 @@ This is not a comprehensive API documentation as we don't control the
 firmware or have any authority over the ACE or its future updates.
 
 get_status
-==========
+----------
 
 Request params:
 
@@ -78,7 +78,7 @@ Slot status dictionary:
 - rfid: 1
 
 drying
-======
+------
 
 Request params:
 
@@ -94,7 +94,7 @@ Response params:
 - None
 
 drying_stop
-===========
+-----------
 
 Request params:
 
@@ -108,7 +108,7 @@ Response params:
 - None
 
 unwind_filament
-===============
+---------------
 
 Request params:
 
@@ -125,7 +125,7 @@ Response params:
 - None
 
 update_unwinding_speed
-======================
+----------------------
 
 Request params:
 
@@ -140,7 +140,7 @@ Response params:
 - None
 
 stop_unwind_filament
-====================
+--------------------
 
 Request params:
 
@@ -154,7 +154,7 @@ Response params:
 - None
 
 feed_filament
-=============
+-------------
 
 Request params:
 
@@ -170,7 +170,7 @@ Response params:
 - None
 
 update_feeding_speed
-====================
+--------------------
 
 Request params:
 
@@ -185,7 +185,7 @@ Response params:
 - None
 
 stop_feed_filament
-==================
+------------------
 
 Request params:
 
@@ -199,7 +199,7 @@ Response params:
 - None
 
 start_feed_assist
-=================
+-----------------
 
 Request params:
 
@@ -213,7 +213,7 @@ Response params:
 - None
 
 stop_feed_assist
-=================
+----------------
 
 Request params:
 

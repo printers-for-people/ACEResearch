@@ -1,5 +1,5 @@
 Anycubic ACE Pro Reverse Engineering
-------------------------------------
+====================================
 
 This GitHub repository is aimed at coordinating reverse engineering efforts and
 documented the ACE Pro. If you'd like to contribute, please open an issue or
