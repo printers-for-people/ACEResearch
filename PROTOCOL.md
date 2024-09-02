@@ -41,6 +41,34 @@ back. For values not known, static values are listed.
 This is not a comprehensive API documentation as we don't control the
 firmware or have any authority over the ACE or its future updates.
 
+enable_rfid
+-----------
+
+Request params:
+
+- None
+
+Response data:
+- msg: "success"
+- code: 0
+
+Response params:
+- None
+
+disable_rfid
+------------
+
+Request params:
+
+- None
+
+Response data:
+- msg: "success"
+- code: 0
+
+Response params:
+- None
+
 get_status
 ----------
 
