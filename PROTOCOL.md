@@ -69,6 +69,55 @@ Response data:
 Response params:
 - None
 
+get_info
+--------
+
+Request params:
+
+- None
+
+Response data:
+- msg: "success"
+- code: 0
+
+Response params:
+
+- id: 0
+- slots: 4
+- model: "Anycubic Color Engine Pro"
+- firmware: "V1.3.82"
+- boot_firmware: "V1.0.1"
+
+get_filament_info
+-----------------
+
+Request params:
+
+- index: Filament slot number
+
+Response data:
+- msg: "success"
+- code: 0
+
+Response params:
+
+- index: Filament slot number
+- sku: ""
+- brand: ""
+- type: ""
+- color: [0,0,0]
+- rfid: 1
+- extruder_temp: Dictionary of temperature data
+- hotbed_temp: Dictionary of temperature data
+- diameter: 0.00
+- total: 330
+- current: 0
+
+Temperature data dictionary:
+
+- min: 0
+- max: 0
+
 get_status
 ----------
 
