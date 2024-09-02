@@ -77,7 +77,7 @@ Request params:
 - None
 
 Response data:
-- msg: "ready"
+- msg: "success"
 - code: 0
 
 Response params:
