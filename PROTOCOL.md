@@ -1,9 +1,12 @@
 Anycubic ACE Pro Protocol
 =========================
 
-The ACE Pro talks over as USB CDC device using a JSON API.
-
 **WARNING**: None of this has been tested and may be entirely wrong.
+
+Transport
+=========
+
+The ACE Pro talks over USB using a USB CDC device, with no flow control.
 
 Framing
 =======
