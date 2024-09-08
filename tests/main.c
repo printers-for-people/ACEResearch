@@ -202,9 +202,47 @@ void testTimeoutBadData(void) {
 	timeoutTester(&params);
 }
 
+// Test that the watchdog times out after sending bad data and persists between
+// connects
+void testTimeoutBadDataPersists(void) {
+	struct timeoutTesterParams params;
+	params.testName = "Watchdog timeout, bad data, persists";
+	params.waitTime = (3 * SECOND_US);
+	params.dataToSend = "Bad watchdog data";
+	params.reconnect = 1;
+	params.expectedLength = WATCHDOG_LENGTH_US - (3 * SECOND_US);
+	timeoutTester(&params);
+}
+
+// Test that the watchdog extends timeout out after sending good data
+void testTimeoutGoodData(void) {
+	struct timeoutTesterParams params;
+	params.testName = "Watchdog timeout, good data";
+	params.waitTime = (3 * SECOND_US);
+	params.dataToSend = "PING_WATCHDOG\r\n";
+	params.reconnect = 0;
+	params.expectedLength = WATCHDOG_LENGTH_US;
+	timeoutTester(&params);
+}
+
+// Test that the watchdog extends timeout out after sending good data and
+// persists between connects
+void testTimeoutGoodDataPersists(void) {
+	struct timeoutTesterParams params;
+	params.testName = "Watchdog timeout, good data, persists";
+	params.waitTime = (3 * SECOND_US);
+	params.dataToSend = "PING_WATCHDOG\r\n";
+	params.reconnect = 1;
+	params.expectedLength = WATCHDOG_LENGTH_US;
+	timeoutTester(&params);
+}
+
 int main(void) {
 	fprintf(stdout, "-- WATCHDOG TESTS --\n");
 	testTimeoutNoData();
 	testTimeoutBadData();
+	testTimeoutBadDataPersists();
+	testTimeoutGoodData();
+	testTimeoutGoodDataPersists();
 	return 0;
 }
