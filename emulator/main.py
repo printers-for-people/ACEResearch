@@ -89,6 +89,7 @@ async def run_sim(watchdog_event):
             data = await sim.read()
             if data == b'\xff\xaa \x00{"id":140,"method":"get_status"}\'\xff\xfe\x00':
                 watchdog_event.set()
+                await sim.write(b"OK")
     finally:
         sim.cleanup()
     return 0
