@@ -24,6 +24,7 @@ class SimPTY:
     def cleanup(self):
         self._unregisterEventLoop(self.loop)
         self._destroyPTYPath()
+        self._closeFDs()
 
     def _createPTY(self):
         (dev_ptmx, dev_pty) = os.openpty()
@@ -47,6 +48,10 @@ class SimPTY:
             os.unlink(path)
         except FileNotFoundError:
             pass
+
+    def _closeFDs(self):
+        os.close(self.controlFD)
+        os.close(self.consumeFD)
 
     def _registerEventLoop(self, loop):
         self.readable = asyncio.Event()
