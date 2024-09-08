@@ -19,10 +19,8 @@ class SimPTY:
         self._destroyPTYPath()
         self._createPTY()
         self._createPTYPath()
-        self._registerEventLoop(self.loop)
 
     def cleanup(self):
-        self._unregisterEventLoop(self.loop)
         self._destroyPTYPath()
         self._closeFDs()
 
@@ -50,30 +48,26 @@ class SimPTY:
             pass
 
     def _closeFDs(self):
+        self.loop.remove_reader(self.controlFD)
+        self.loop.remove_reader(self.consumeFD)
         os.close(self.controlFD)
         os.close(self.consumeFD)
 
-    def _registerEventLoop(self, loop):
-        self.readable = asyncio.Event()
-        self.writable = asyncio.Event()
-        onReadable = lambda: self.readable.set()
-        onWritable = lambda: self.writable.set()
-        loop.add_reader(self.controlFD, onReadable)
-        loop.add_writer(self.controlFD, onWritable)
-
-    def _unregisterEventLoop(self, loop):
-        loop.remove_reader(self.controlFD)
-        loop.remove_writer(self.controlFD)
-
     async def read(self):
-        await self.readable.wait()
-        self.readable.clear()
+        readable = asyncio.Event()
+        onReadable = lambda: readable.set()
+        self.loop.add_reader(self.controlFD, onReadable)
+        await readable.wait()
+        self.loop.remove_reader(self.controlFD)
         data = os.read(self.controlFD, 64)
         return data
 
     async def write(self, data):
-        await self.writable.wait()
-        self.writable.clear()
+        writable = asyncio.Event()
+        onWritable = lambda: writable.set()
+        self.loop.add_writer(self.controlFD, onWritable)
+        await writable.wait()
+        self.loop.remove_writer(self.controlFD)
         os.write(self.controlFD, data)
 
 
