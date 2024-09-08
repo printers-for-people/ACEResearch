@@ -1,2 +1,3 @@
+tests/main
 tests/main_*
 tests/armv7l-linux-musleabihf-cross*
