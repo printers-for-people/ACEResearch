@@ -191,8 +191,20 @@ void testTimeoutNoData(void) {
 	timeoutTester(&params);
 }
 
+// Test that the watchdog times out after sending bad data
+void testTimeoutBadData(void) {
+	struct timeoutTesterParams params;
+	params.testName = "Watchdog timeout, bad data";
+	params.waitTime = (3 * SECOND_US);
+	params.dataToSend = "Bad watchdog data";
+	params.reconnect = 0;
+	params.expectedLength = WATCHDOG_LENGTH_US - (3 * SECOND_US);
+	timeoutTester(&params);
+}
+
 int main(void) {
 	fprintf(stdout, "-- WATCHDOG TESTS --\n");
 	testTimeoutNoData();
+	testTimeoutBadData();
 	return 0;
 }
