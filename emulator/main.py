@@ -87,7 +87,7 @@ async def run_sim(watchdog_event):
     try:
         while True:
             data = await sim.read()
-            if data == b"PING_WATCHDOG\r\n":
+            if data == b'\xff\xaa \x00{"id":140,"method":"get_status"}\'\xff\xfe\x00':
                 watchdog_event.set()
     finally:
         sim.cleanup()

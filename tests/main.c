@@ -7,6 +7,11 @@
 #define SECOND_US 1000000
 #define WATCHDOG_LENGTH_US (5 * SECOND_US)
 
+const char GOOD_WATCHDOG_DATA[] =
+	"\377\252 \0{\"id\":140,\"method\":\"get_status\"}'\377\376";
+const char BAD_WATCHDOG_DATA[] =
+	"\377\252 \0{\"id\":140,\"method\":\"get_statux\"}'\377\376";
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -121,6 +126,7 @@ struct timeoutTesterParams {
 	const char *testName;
 	int waitTime;
 	const char *dataToSend;
+	int dataSize;
 	int reconnect;
 	int expectedLength;
 };
@@ -147,9 +153,8 @@ void timeoutTester(struct timeoutTesterParams *params) {
 	progressDot();
 
 	// Write data if requested
-	if (params->dataToSend) {
-		size_t len = strlen(params->dataToSend);
-		write(tty, params->dataToSend, len);
+	if (params->dataToSend && params->dataSize) {
+		write(tty, params->dataToSend, params->dataSize);
 	}
 	progressDot();
 
@@ -186,6 +191,7 @@ void testTimeoutNoData(void) {
 	params.testName = "Watchdog timeout, no data";
 	params.waitTime = 0;
 	params.dataToSend = NULL;
+	params.dataSize = 0;
 	params.reconnect = 0;
 	params.expectedLength = WATCHDOG_LENGTH_US;
 	timeoutTester(&params);
@@ -196,7 +202,8 @@ void testTimeoutBadData(void) {
 	struct timeoutTesterParams params;
 	params.testName = "Watchdog timeout, bad data";
 	params.waitTime = (3 * SECOND_US);
-	params.dataToSend = "Bad watchdog data";
+	params.dataToSend = BAD_WATCHDOG_DATA;
+	params.dataSize = sizeof(BAD_WATCHDOG_DATA);
 	params.reconnect = 0;
 	params.expectedLength = WATCHDOG_LENGTH_US - (3 * SECOND_US);
 	timeoutTester(&params);
@@ -208,7 +215,7 @@ void testTimeoutBadDataPersists(void) {
 	struct timeoutTesterParams params;
 	params.testName = "Watchdog timeout, bad data, persists";
 	params.waitTime = (3 * SECOND_US);
-	params.dataToSend = "Bad watchdog data";
+	params.dataToSend = BAD_WATCHDOG_DATA;
 	params.reconnect = 1;
 	params.expectedLength = WATCHDOG_LENGTH_US - (3 * SECOND_US);
 	timeoutTester(&params);
@@ -219,7 +226,8 @@ void testTimeoutGoodData(void) {
 	struct timeoutTesterParams params;
 	params.testName = "Watchdog timeout, good data";
 	params.waitTime = (3 * SECOND_US);
-	params.dataToSend = "PING_WATCHDOG\r\n";
+	params.dataToSend = GOOD_WATCHDOG_DATA;
+	params.dataSize = sizeof(GOOD_WATCHDOG_DATA);
 	params.reconnect = 0;
 	params.expectedLength = WATCHDOG_LENGTH_US;
 	timeoutTester(&params);
@@ -231,7 +239,8 @@ void testTimeoutGoodDataPersists(void) {
 	struct timeoutTesterParams params;
 	params.testName = "Watchdog timeout, good data, persists";
 	params.waitTime = (3 * SECOND_US);
-	params.dataToSend = "PING_WATCHDOG\r\n";
+	params.dataToSend = GOOD_WATCHDOG_DATA;
+	params.dataSize = sizeof(GOOD_WATCHDOG_DATA);
 	params.reconnect = 1;
 	params.expectedLength = WATCHDOG_LENGTH_US;
 	timeoutTester(&params);
