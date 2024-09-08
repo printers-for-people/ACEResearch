@@ -1,0 +1,13 @@
+BasedOnStyle: LLVM
+AlignAfterOpenBracket: DontAlign
+AlignArrayOfStructures: None
+AlignConsecutiveAssignments: None
+AlignConsecutiveBitFields: None
+AlignConsecutiveMacros: None
+AlignEscapedNewlines: DontAlign
+AlignOperands: DontAlign
+AlignTrailingComments:
+	Kind: Never
+ContinuationIndentWidth: 8
+IndentWidth: 8
+UseTab: Always
