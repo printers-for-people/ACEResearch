@@ -4,7 +4,8 @@
 #define _POSIX_C_SOURCE 199309L
 #define _DEFAULT_SOURCE
 
-#define WATCHDOG_LENGTH_US 5000000
+#define SECOND_US 1000000
+#define WATCHDOG_LENGTH_US (5 * SECOND_US)
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -116,11 +117,19 @@ void progressDot() {
 	fflush(stdout);
 }
 
-// Test that the watchdog times out after the correct amount of seconds
-void testTimeout(void) {
-	fprintf(stdout, "Timeout test ");
+struct timeoutTesterParams {
+	const char *testName;
+	int waitTime;
+	const char *dataToSend;
+	int reconnect;
+	int expectedLength;
+};
+
+void timeoutTester(struct timeoutTesterParams *params) {
 	struct timespec time_start;
 	struct timespec time_end;
+	fprintf(stdout, "%s ", params->testName);
+	fflush(stdout);
 
 	// Open the ACE and catch the last watchdog cycle
 	int tty = waitOpenACE();
@@ -129,28 +138,61 @@ void testTimeout(void) {
 	progressDot();
 	close(tty);
 
-	// Open again and measure a new cycle's length
+	// Open again to start fresh
 	tty = waitOpenACE();
 	progressDot();
+
+	// Pass any required time
+	sleepMicroseconds(params->waitTime);
+	progressDot();
+
+	// Write data if requested
+	if (params->dataToSend) {
+		size_t len = strlen(params->dataToSend);
+		write(tty, params->dataToSend, len);
+	}
+	progressDot();
+
+	// Re-open if needed
+	if (params->reconnect) {
+		close(tty);
+		tty = waitOpenACE();
+	}
+	progressDot();
+
+	// Measure the timeout time
 	getTime(&time_start);
 	waitTTYClosed(tty);
-	progressDot();
-	close(tty);
 	getTime(&time_end);
+	progressDot();
+
+	// Cleanup
+	close(tty);
 
 	// Confirm it's the correct length
-	int watchdog_length = durationMicroseconds(&time_start, &time_end);
-	int is_correct_length =
-		microsecondsEqual(watchdog_length, WATCHDOG_LENGTH_US, 500000);
+	int timeout_length = durationMicroseconds(&time_start, &time_end);
+	int is_correct_length = microsecondsEqual(
+		timeout_length, params->expectedLength, 500000);
 
 	// Print the results
 	const char *tag = is_correct_length ? "SUCCESS" : "ERROR";
 	fprintf(stdout, " %s: Watchdog timeout is %i, should be around %i\n",
-		tag, watchdog_length, WATCHDOG_LENGTH_US);
+		tag, timeout_length, params->expectedLength);
+}
+
+// Test that the watchdog times out after the correct amount of seconds
+void testTimeoutNoData(void) {
+	struct timeoutTesterParams params;
+	params.testName = "Watchdog timeout, no data";
+	params.waitTime = 0;
+	params.dataToSend = NULL;
+	params.reconnect = 0;
+	params.expectedLength = WATCHDOG_LENGTH_US;
+	timeoutTester(&params);
 }
 
 int main(void) {
 	fprintf(stdout, "-- WATCHDOG TESTS --\n");
-	testTimeout();
+	testTimeoutNoData();
 	return 0;
 }
