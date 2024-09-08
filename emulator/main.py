@@ -116,6 +116,7 @@ async def main():
     try:
         while True:
             await run_cycle()
+            await asyncio.sleep(2)
     except (asyncio.CancelledError, KeyboardInterrupt):
         err = 1
     return err
