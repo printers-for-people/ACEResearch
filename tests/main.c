@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Copyright 2024 Jookia
 
 #define _POSIX_C_SOURCE 199309L
+#define _DEFAULT_SOURCE
 
 #define WATCHDOG_LENGTH_US 5000000
 
@@ -10,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -39,6 +41,9 @@ int tryOpenACE(void) {
 	if (tty == -1) {
 		tty = tryOpenSerial();
 	}
+	struct termios cfg;
+	cfmakeraw(&cfg);
+	tcsetattr(tty, 0, &cfg);
 	return tty;
 }
 
