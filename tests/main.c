@@ -48,9 +48,16 @@ int tryOpenACE(void) {
 }
 
 void sleepMicroseconds(int microseconds) {
+	if (microseconds == 0) {
+		return;
+	}
+
+	int sec = microseconds / 1000000;
+	int nsec = (microseconds % 1000000) * 1000;
+
 	struct timespec wait_time;
-	wait_time.tv_sec = 0;
-	wait_time.tv_nsec = microseconds * 1000;
+	wait_time.tv_sec = sec;
+	wait_time.tv_nsec = nsec;
 	nanosleep(&wait_time, NULL);
 }
 
