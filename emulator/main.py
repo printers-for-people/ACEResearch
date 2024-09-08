@@ -89,7 +89,6 @@ async def run_sim(watchdog_event):
             data = await sim.read()
             if data == b"PING_WATCHDOG\r\n":
                 watchdog_event.set()
-            await sim.write(data)
     finally:
         sim.cleanup()
     return 0
