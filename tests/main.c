@@ -5,12 +5,10 @@
 #define _DEFAULT_SOURCE
 
 #define SECOND_US 1000000
-#define WATCHDOG_LENGTH_US (5 * SECOND_US)
+#define KEEPALIVE_LENGTH_US (3 * SECOND_US)
 
-const char GOOD_WATCHDOG_DATA[] =
+const char KEEPALIVE_DATA[] =
 	"\377\252 \0{\"id\":140,\"method\":\"get_status\"}'\377\376";
-const char BAD_WATCHDOG_DATA[] =
-	"\377\252 \0{\"id\":140,\"method\":\"get_statux\"}'\377\376";
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -123,7 +121,7 @@ void progressDot() {
 	fflush(stdout);
 }
 
-struct timeoutTesterParams {
+struct keepaliveTesterParams {
 	const char *testName;
 	int waitTime;
 	const char *dataToSend;
@@ -132,13 +130,13 @@ struct timeoutTesterParams {
 	int expectedLength;
 };
 
-void timeoutTester(struct timeoutTesterParams *params) {
+void keepaliveTester(struct keepaliveTesterParams *params) {
 	struct timespec time_start;
 	struct timespec time_end;
 	fprintf(stdout, "%s ", params->testName);
 	fflush(stdout);
 
-	// Open the ACE and catch the last watchdog cycle
+	// Open the ACE and catch the last keepalive cycle
 	int tty = waitOpenACE();
 	progressDot();
 	waitTTYClosed(tty);
@@ -166,7 +164,7 @@ void timeoutTester(struct timeoutTesterParams *params) {
 	}
 	progressDot();
 
-	// Measure the timeout time
+	// Measure the keepalive time
 	getTime(&time_start);
 	waitTTYClosed(tty);
 	getTime(&time_end);
@@ -176,83 +174,57 @@ void timeoutTester(struct timeoutTesterParams *params) {
 	close(tty);
 
 	// Confirm it's the correct length
-	int timeout_length = durationMicroseconds(&time_start, &time_end);
+	int keepalive_length = durationMicroseconds(&time_start, &time_end);
 	int is_correct_length = microsecondsEqual(
-		timeout_length, params->expectedLength, 500000);
+		keepalive_length, params->expectedLength, 500000);
 
 	// Print the results
 	const char *tag = is_correct_length ? "SUCCESS" : "ERROR";
-	fprintf(stdout, " %s: Watchdog timeout is %i, should be around %i\n",
-		tag, timeout_length, params->expectedLength);
+	fprintf(stdout, " %s: Keepalive timeout is %i, should be around %i\n",
+		tag, keepalive_length, params->expectedLength);
 }
 
-// Test that the watchdog times out after the correct amount of seconds
-void testTimeoutNoData(void) {
-	struct timeoutTesterParams params;
-	params.testName = "Watchdog timeout, no data";
+// Test that the keepalive times out after the correct amount of seconds
+void testKeepaliveNoData(void) {
+	struct keepaliveTesterParams params;
+	params.testName = "Keepalive keepalive, no data";
 	params.waitTime = 0;
 	params.dataToSend = NULL;
 	params.dataSize = 0;
 	params.reconnect = 0;
-	params.expectedLength = WATCHDOG_LENGTH_US;
-	timeoutTester(&params);
+	params.expectedLength = KEEPALIVE_LENGTH_US;
+	keepaliveTester(&params);
 }
 
-// Test that the watchdog times out after sending bad data
-void testTimeoutBadData(void) {
-	struct timeoutTesterParams params;
-	params.testName = "Watchdog timeout, bad data";
-	params.waitTime = (3 * SECOND_US);
-	params.dataToSend = BAD_WATCHDOG_DATA;
-	params.dataSize = sizeof(BAD_WATCHDOG_DATA);
+// Test that the keepalive extends keepalive out after sending good data
+void testKeepaliveData(void) {
+	struct keepaliveTesterParams params;
+	params.testName = "Keepalive keepalive, data";
+	params.waitTime = (2 * SECOND_US);
+	params.dataToSend = KEEPALIVE_DATA;
+	params.dataSize = sizeof(KEEPALIVE_DATA);
 	params.reconnect = 0;
-	params.expectedLength = WATCHDOG_LENGTH_US - (3 * SECOND_US);
-	timeoutTester(&params);
+	params.expectedLength = KEEPALIVE_LENGTH_US;
+	keepaliveTester(&params);
 }
 
-// Test that the watchdog times out after sending bad data and persists between
-// connects
-void testTimeoutBadDataPersists(void) {
-	struct timeoutTesterParams params;
-	params.testName = "Watchdog timeout, bad data, persists";
-	params.waitTime = (3 * SECOND_US);
-	params.dataToSend = BAD_WATCHDOG_DATA;
-	params.reconnect = 1;
-	params.expectedLength = WATCHDOG_LENGTH_US - (3 * SECOND_US);
-	timeoutTester(&params);
-}
-
-// Test that the watchdog extends timeout out after sending good data
-void testTimeoutGoodData(void) {
-	struct timeoutTesterParams params;
-	params.testName = "Watchdog timeout, good data";
-	params.waitTime = (3 * SECOND_US);
-	params.dataToSend = GOOD_WATCHDOG_DATA;
-	params.dataSize = sizeof(GOOD_WATCHDOG_DATA);
-	params.reconnect = 0;
-	params.expectedLength = WATCHDOG_LENGTH_US;
-	timeoutTester(&params);
-}
-
-// Test that the watchdog extends timeout out after sending good data and
+// Test that the keepalive extends keepalive out after sending good data and
 // persists between connects
-void testTimeoutGoodDataPersists(void) {
-	struct timeoutTesterParams params;
-	params.testName = "Watchdog timeout, good data, persists";
-	params.waitTime = (3 * SECOND_US);
-	params.dataToSend = GOOD_WATCHDOG_DATA;
-	params.dataSize = sizeof(GOOD_WATCHDOG_DATA);
+void testKeepaliveDataPersists(void) {
+	struct keepaliveTesterParams params;
+	params.testName = "Keepalive keepalive, data, persists";
+	params.waitTime = (2 * SECOND_US);
+	params.dataToSend = KEEPALIVE_DATA;
+	params.dataSize = sizeof(KEEPALIVE_DATA);
 	params.reconnect = 1;
-	params.expectedLength = WATCHDOG_LENGTH_US;
-	timeoutTester(&params);
+	params.expectedLength = KEEPALIVE_LENGTH_US;
+	keepaliveTester(&params);
 }
 
 int main(void) {
-	fprintf(stdout, "-- WATCHDOG TESTS --\n");
-	testTimeoutNoData();
-	testTimeoutBadData();
-	testTimeoutBadDataPersists();
-	testTimeoutGoodData();
-	testTimeoutGoodDataPersists();
+	fprintf(stdout, "-- KEEPALIVE TESTS --\n");
+	testKeepaliveNoData();
+	testKeepaliveData();
+	testKeepaliveDataPersists();
 	return 0;
 }
