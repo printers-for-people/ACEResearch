@@ -47,7 +47,7 @@ int tryOpenACE(void) {
 	if (tty == -1) {
 		tty = tryOpenSerial();
 	}
-	struct termios cfg;
+	struct termios cfg = {0};
 	cfmakeraw(&cfg);
 	cfsetspeed(&cfg, B115200);
 	tcsetattr(tty, 0, &cfg);
