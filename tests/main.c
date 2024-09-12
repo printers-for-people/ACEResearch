@@ -7,10 +7,8 @@
 #define SECOND_US 1000000
 #define KEEPALIVE_LENGTH_US (3 * SECOND_US)
 
-const char KEEPALIVE_DATA[] =
-	"\377\252 \0{\"id\":140,\"method\":\"get_status\"}'\377\376";
-
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -121,19 +119,10 @@ void progressDot() {
 	fflush(stdout);
 }
 
-struct keepaliveTesterParams {
-	const char *testName;
-	int waitTime;
-	const char *dataToSend;
-	int dataSize;
-	int reconnect;
-	int expectedLength;
-};
-
-void keepaliveTester(struct keepaliveTesterParams *params) {
+void keepaliveTester(const char *testName, bool sendData, bool reconnect) {
 	struct timespec time_start;
 	struct timespec time_end;
-	fprintf(stdout, "%s ", params->testName);
+	fprintf(stdout, "%s ", testName);
 	fflush(stdout);
 
 	// Open the ACE and catch the last keepalive cycle
@@ -147,18 +136,15 @@ void keepaliveTester(struct keepaliveTesterParams *params) {
 	tty = waitOpenACE();
 	progressDot();
 
-	// Pass any required time
-	sleepMicroseconds(params->waitTime);
-	progressDot();
-
-	// Write data if requested
-	if (params->dataToSend && params->dataSize) {
-		write(tty, params->dataToSend, params->dataSize);
+	// Write test data if requested
+	if (sendData) {
+		sleepMicroseconds(KEEPALIVE_LENGTH_US - (1 * SECOND_US));
+		write(tty, "x", 1);
 	}
 	progressDot();
 
 	// Re-open if needed
-	if (params->reconnect) {
+	if (reconnect) {
 		close(tty);
 		tty = waitOpenACE();
 	}
@@ -176,55 +162,22 @@ void keepaliveTester(struct keepaliveTesterParams *params) {
 	// Confirm it's the correct length
 	int keepalive_length = durationMicroseconds(&time_start, &time_end);
 	int is_correct_length = microsecondsEqual(
-		keepalive_length, params->expectedLength, 500000);
+		keepalive_length, KEEPALIVE_LENGTH_US, 500000);
 
 	// Print the results
 	const char *tag = is_correct_length ? "SUCCESS" : "ERROR";
 	fprintf(stdout, " %s: Keepalive timeout is %i, should be around %i\n",
-		tag, keepalive_length, params->expectedLength);
+		tag, keepalive_length, KEEPALIVE_LENGTH_US);
 }
 
-// Test that the keepalive times out after the correct amount of seconds
-void testKeepaliveNoData(void) {
-	struct keepaliveTesterParams params;
-	params.testName = "Keepalive keepalive, no data";
-	params.waitTime = 0;
-	params.dataToSend = NULL;
-	params.dataSize = 0;
-	params.reconnect = 0;
-	params.expectedLength = KEEPALIVE_LENGTH_US;
-	keepaliveTester(&params);
-}
-
-// Test that the keepalive extends keepalive out after sending good data
-void testKeepaliveData(void) {
-	struct keepaliveTesterParams params;
-	params.testName = "Keepalive keepalive, data";
-	params.waitTime = (2 * SECOND_US);
-	params.dataToSend = KEEPALIVE_DATA;
-	params.dataSize = sizeof(KEEPALIVE_DATA);
-	params.reconnect = 0;
-	params.expectedLength = KEEPALIVE_LENGTH_US;
-	keepaliveTester(&params);
-}
-
-// Test that the keepalive extends keepalive out after sending good data and
-// persists between connects
-void testKeepaliveDataPersists(void) {
-	struct keepaliveTesterParams params;
-	params.testName = "Keepalive keepalive, data, persists";
-	params.waitTime = (2 * SECOND_US);
-	params.dataToSend = KEEPALIVE_DATA;
-	params.dataSize = sizeof(KEEPALIVE_DATA);
-	params.reconnect = 1;
-	params.expectedLength = KEEPALIVE_LENGTH_US;
-	keepaliveTester(&params);
+void testKeepalive(void) {
+	fprintf(stdout, "-- KEEPALIVE TESTS --\n");
+	keepaliveTester("Keepalive timeout", false, false);
+	keepaliveTester("Keepalive ping", true, false);
+	keepaliveTester("Keepalive ping and reconnect", true, true);
 }
 
 int main(void) {
-	fprintf(stdout, "-- KEEPALIVE TESTS --\n");
-	testKeepaliveNoData();
-	testKeepaliveData();
-	testKeepaliveDataPersists();
+	testKeepalive();
 	return 0;
 }
