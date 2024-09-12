@@ -49,6 +49,7 @@ int tryOpenACE(void) {
 	}
 	struct termios cfg;
 	cfmakeraw(&cfg);
+	cfsetspeed(&cfg, B115200);
 	tcsetattr(tty, 0, &cfg);
 	return tty;
 }
