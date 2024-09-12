@@ -7,6 +7,7 @@ Transport
 =========
 
 The ACE Pro talks over USB using a USB CDC device, with no flow control.
+It will disconnect and re-connect if no data is sent within 3 seconds.
 
 Framing
 =======
