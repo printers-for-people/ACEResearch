@@ -77,11 +77,11 @@ int waitOpenACE(void) {
 }
 
 void waitTTYClosed(int tty) {
-	int err = 0;
+	ssize_t count = 0;
 	static char buf[1024];
 	do {
-		err = read(tty, &buf, sizeof(buf));
-	} while (err != -1);
+		count = read(tty, &buf, sizeof(buf));
+	} while (count > 0);
 }
 
 void getTime(struct timespec *time) {
