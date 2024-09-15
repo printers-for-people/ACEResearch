@@ -7,7 +7,6 @@ Transport
 =========
 
 The ACE Pro talks over USB using a USB CDC device, with no flow control.
-It will disconnect and re-connect if no data is sent within 3 seconds.
 
 Framing
 =======
@@ -19,6 +18,9 @@ Each JSON command is packed in a frame of the following format:
 - The JSON itself
 - 2 bytes: CRC-16/MCRF4XX code of the JSON
 - 1 byte: 0xFE
+
+The ACE will disconnect and re-connect if no frame is sent within 3 seconds,
+regardless of whether the frame data has a valid CRC.
 
 RPC
 ===

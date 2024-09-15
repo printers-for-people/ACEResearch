@@ -71,29 +71,54 @@ class SimPTY:
         os.write(self.controlFD, data)
 
 
-async def run_sim():
+async def run_watchdog(watchdog_event):
+    try:
+        while True:
+            wait = watchdog_event.wait()
+            await asyncio.wait_for(wait, timeout=3)
+            watchdog_event.clear()
+    except asyncio.TimeoutError:
+        return 0
+
+
+async def run_sim(watchdog_event):
     loop = asyncio.get_running_loop()
     sim = SimPTY(loop)
     try:
         while True:
-            data = None
-            try:
-                data = await asyncio.wait_for(sim.read(), timeout=3)
-            except asyncio.TimeoutError:
-                sim.cleanup()
-                await asyncio.sleep(2)
-                sim = SimPTY(loop)
-                continue
-            await sim.write(b"OK")
+            data = await sim.read()
+            if data == b'\xFF\xAA\x20\x00{"id":140,"method":"get_status"}\x27\xFF\xFE':
+                watchdog_event.set()
+                await sim.write(b"OK")
+            elif (
+                data == b'\xFF\xAA\x20\x00{"id":140,"method":"get_statux"}\x27\xFF\xFE'
+            ):
+                watchdog_event.set()
+            elif (
+                data == b'\xFF\xAA\x20\x00{"id":140,"method":"get_status"}\x00\x00\xFE'
+            ):
+                watchdog_event.set()
     finally:
         sim.cleanup()
     return 0
 
 
+async def run_cycle():
+    watchdog_event = asyncio.Event()
+    sim_task = asyncio.create_task(run_sim(watchdog_event))
+    watchdog_task = asyncio.create_task(run_watchdog(watchdog_event))
+    all_tasks = [sim_task, watchdog_task]
+    (done, pending) = await asyncio.wait(all_tasks, return_when=asyncio.FIRST_COMPLETED)
+    sim_task.cancel()
+    watchdog_task.cancel()
+
+
 async def main():
     err = 0
     try:
-        await run_sim()
+        while True:
+            await run_cycle()
+            await asyncio.sleep(2)
     except (asyncio.CancelledError, KeyboardInterrupt):
         err = 1
     return err

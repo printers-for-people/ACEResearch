@@ -6,6 +6,8 @@
 
 #define SECOND_US 1000000
 #define KEEPALIVE_LENGTH_US (3 * SECOND_US)
+#define SLEEP_LENGTH_US (1 * SECOND_US)
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
 
 #include <fcntl.h>
 #include <stdbool.h>
@@ -43,6 +45,9 @@ int tryOpenACE(void) {
 	if (tty == -1) {
 		tty = tryOpenSerial();
 	}
+	if (tty == -1) {
+		return -1;
+	}
 	struct termios cfg = {0};
 	cfmakeraw(&cfg);
 	cfsetspeed(&cfg, B115200);
@@ -73,12 +78,17 @@ int waitOpenACE(void) {
 	return tty;
 }
 
-void waitTTYClosed(int tty) {
+ssize_t waitTTYClosed(int tty) {
+	ssize_t ret = 0;
 	ssize_t count = 0;
 	static char buf[1024];
 	do {
 		count = read(tty, &buf, sizeof(buf));
+		if (count > 0) {
+			ret += count;
+		}
 	} while (count > 0);
+	return ret;
 }
 
 void getTime(struct timespec *time) {
@@ -119,10 +129,38 @@ void progressDot() {
 	fflush(stdout);
 }
 
-void keepaliveTester(const char *testName, bool sendData, bool reconnect) {
+struct frameTestData {
+	const char *name;
+	const char *data;
+	size_t data_len;
+	bool pings_keepalive;
+	bool has_output;
+};
+
+#define NEW_TEST(x) \
+	{ \
+		.name = x,
+#define DATA(x) .data = x, .data_len = (sizeof(x) - 1),
+#define PINGS_KEEPALIVE(x) .pings_keepalive = x,
+#define HAS_OUTPUT(x) .has_output = x,
+#define END_TEST() \
+	} \
+	,
+
+struct frameTestData frameTestDatas[] = {
+#include "frame_tests.inc"
+};
+
+#undef NEW_TEST
+#undef DATA
+#undef PINGS_KEEPALIVE
+#undef HAS_OUTPUT
+#undef END_TEST
+
+void frameTester(struct frameTestData *data, bool reconnect) {
 	struct timespec time_start;
 	struct timespec time_end;
-	fprintf(stdout, "%s ", testName);
+	fprintf(stdout, "%s, reconnect is %i ", data->name, reconnect);
 	fflush(stdout);
 
 	// Open the ACE and catch the last keepalive cycle
@@ -136,10 +174,13 @@ void keepaliveTester(const char *testName, bool sendData, bool reconnect) {
 	tty = waitOpenACE();
 	progressDot();
 
+	// Sleep so we don't measure from the start of teh keepalive
+	sleepMicroseconds(KEEPALIVE_LENGTH_US - SLEEP_LENGTH_US);
+	progressDot();
+
 	// Write test data if requested
-	if (sendData) {
-		sleepMicroseconds(KEEPALIVE_LENGTH_US - (1 * SECOND_US));
-		write(tty, "x", 1);
+	if (data->data_len) {
+		write(tty, data->data, data->data_len);
 	}
 	progressDot();
 
@@ -152,32 +193,41 @@ void keepaliveTester(const char *testName, bool sendData, bool reconnect) {
 
 	// Measure the keepalive time
 	getTime(&time_start);
-	waitTTYClosed(tty);
+	ssize_t output = waitTTYClosed(tty);
 	getTime(&time_end);
 	progressDot();
 
 	// Cleanup
 	close(tty);
 
-	// Confirm it's the correct length
+	// Check if the test was successful
 	int keepalive_length = durationMicroseconds(&time_start, &time_end);
-	int is_correct_length = microsecondsEqual(
+	bool pinged_keepalive = microsecondsEqual(
 		keepalive_length, KEEPALIVE_LENGTH_US, 500000);
+	bool timed_out =
+		microsecondsEqual(keepalive_length, SLEEP_LENGTH_US, 500000);
+	bool success_pinged = (data->pings_keepalive == pinged_keepalive);
+	bool success_timed_out = (!data->pings_keepalive == timed_out);
+	bool success_keepalive = (success_pinged && success_timed_out);
+	bool success_output = (data->has_output == (output > 0));
+	bool success = (success_keepalive && success_output);
 
 	// Print the results
-	const char *tag = is_correct_length ? "SUCCESS" : "ERROR";
-	fprintf(stdout, " %s: Keepalive timeout is %i, should be around %i\n",
-		tag, keepalive_length, KEEPALIVE_LENGTH_US);
+	const char *tag = success ? "SUCCESS" : "ERROR";
+	fprintf(stdout, " %s: Keepalive timeout is %i, read %zi bytes\n", tag,
+		keepalive_length, output);
 }
 
-void testKeepalive(void) {
-	fprintf(stdout, "-- KEEPALIVE TESTS --\n");
-	keepaliveTester("Keepalive timeout", false, false);
-	keepaliveTester("Keepalive ping", true, false);
-	keepaliveTester("Keepalive ping and reconnect", true, true);
+void testFrames(void) {
+	fprintf(stdout, "-- FRAME TESTS --\n");
+	for (size_t i = 0; i < ARRAY_SIZE(frameTestDatas); ++i) {
+		struct frameTestData *data = &frameTestDatas[i];
+		frameTester(data, false);
+		frameTester(data, true);
+	}
 }
 
 int main(void) {
-	testKeepalive();
+	testFrames();
 	return 0;
 }
