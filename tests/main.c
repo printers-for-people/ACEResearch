@@ -37,6 +37,9 @@ int tryOpenSimulator(void) {
 
 int tryOpenSerial(void) {
 	int tty = open("/dev/serial/by-id/usb-ANYCUBIC_ACE_0-if00", O_RDWR);
+	if (tty == -1) {
+		tty = open("/dev/serial/by-id/usb-ANYCUBIC_ACE_1-if00", O_RDWR);
+	}
 	return tty;
 }
 
