@@ -189,6 +189,8 @@ void frameTester(struct frameTestData *data, bool reconnect) {
 
 	// Re-open if needed
 	if (reconnect) {
+		// We might miss data during this, so don't fail
+		// the test later if we have reconnect enabled
 		close(tty);
 		tty = waitOpenACE();
 	}
@@ -212,7 +214,7 @@ void frameTester(struct frameTestData *data, bool reconnect) {
 	bool success_pinged = (data->pings_keepalive == pinged_keepalive);
 	bool success_timed_out = (!data->pings_keepalive == timed_out);
 	bool success_keepalive = (success_pinged && success_timed_out);
-	bool success_output = (data->has_output == (output > 0));
+	bool success_output = (data->has_output == (output > 0) || reconnect);
 	bool success = (success_keepalive && success_output);
 
 	// Print the results
