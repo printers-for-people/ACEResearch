@@ -177,7 +177,7 @@ void frameTester(struct frameTestData *data, bool reconnect) {
 	tty = waitOpenACE();
 	progressDot();
 
-	// Sleep so we don't measure from the start of teh keepalive
+	// Sleep so we don't measure from the start of the keepalive
 	sleepMicroseconds(KEEPALIVE_LENGTH_US - SLEEP_LENGTH_US);
 	progressDot();
 
