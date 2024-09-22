@@ -182,8 +182,17 @@ void frameTester(struct frameTestData *data, bool reconnect) {
 	progressDot();
 
 	// Write test data if requested
-	if (data->data_len) {
-		write(tty, data->data, data->data_len);
+	ssize_t data_len = data->data_len;
+	const char *data_buf = data->data;
+	while (data_len > 0) {
+		ssize_t to_write = (data_len > 64) ? 64 : data_len;
+		ssize_t written = write(tty, data_buf, to_write);
+		if (written == -1) {
+			fprintf(stderr, "Unable to write data\n");
+			abort();
+		}
+		data_len -= written;
+		data_buf += written;
 	}
 	progressDot();
 
