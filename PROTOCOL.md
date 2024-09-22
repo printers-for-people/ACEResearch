@@ -6,7 +6,10 @@ Anycubic ACE Pro Protocol
 Transport
 =========
 
-The ACE Pro talks over USB using a USB CDC device, with no flow control.
+The ACE Pro talks over USB using a USB CDC device, with no flow control. It
+seems to share a single ringle buffer for input and output, and sending packets
+too fast may drop data. Sending packets before waiting for a response may lose
+output the printer was sending.
 
 Framing
 =======
@@ -45,6 +48,10 @@ Each response is sent from the ACE containing the following JSON data:
 - result: Dictionary of method-specific return data
 - code: Method-specific return code
 - msg: Method-specific message
+
+Make sure to lock access to the ACE when sending a request and reading a
+response. It's easy to overlook this if you have a background thread that
+works to keep the connection alive by sending a command every second.
 
 Methods
 =======
