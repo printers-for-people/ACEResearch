@@ -16,11 +16,19 @@ Each JSON command is packed in a frame of the following format:
 - 2 bytes: 0xFF 0xAA
 - 2 bytes: Payload length (little endian)
 - The JSON itself
-- 2 bytes: CRC-16/MCRF4XX code of the JSON
+- 2 bytes: CRC-16/MCRF4XX code of the JSON (little endian)
 - 1 byte: 0xFE
 
 The ACE will disconnect and re-connect if no frame is sent within 3 seconds,
-regardless of whether the frame data has a valid CRC.
+regardless of whether the frame data has a valid length or CRC. This timeout
+does not reset when a connection is made, so you may be unlucky enough to
+connect just as it times out. Just try again!
+
+The header is two bytes, so in the case of one of the bytes getting corrupted
+the frame will be ignored, unless the frame contains 0xFF 0xAA in it. If the
+header gets corrupted and frame contains 0xFF 0xAA in it the ACE may freeze for
+a while trying to read a large packet. You can work around this hiccup by
+re-generating a payload until the CRC does not match 0xFF 0xAA (little endian).
 
 RPC
 ===
