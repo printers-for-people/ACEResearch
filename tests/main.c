@@ -161,13 +161,7 @@ struct frameTestData frameTestDatas[] = {
 #undef HAS_OUTPUT
 #undef END_TEST
 
-bool testFrameReconnect(bool timeout) {
-	const char data_buf1[] = "\xFF\xAA\x20\x00{\"id\":140,\"method\":";
-	const char data_buf2[] = "\"get_status\"}\x27\xFF\xFE";
-
-	fprintf(stdout, "Frame reconnect, timeout %i ", timeout);
-	fflush(stdout);
-
+int openTTYCatchLastCycle(void) {
 	// Open the ACE and catch the last keepalive cycle
 	int tty = waitOpenACE();
 	progressDot();
@@ -178,10 +172,10 @@ bool testFrameReconnect(bool timeout) {
 	// Open again to start fresh
 	tty = waitOpenACE();
 	progressDot();
+	return tty;
+}
 
-	// Write half of test data
-	const char *data_buf = data_buf1;
-	ssize_t data_len = sizeof(data_buf1) - 1; // Skip NULL
+void writeTTYData(int tty, ssize_t data_len, const char *data_buf, int sleep_us) {
 	while (data_len > 0) {
 		ssize_t written = write(tty, data_buf, data_len);
 		if (written == -1) {
@@ -190,8 +184,21 @@ bool testFrameReconnect(bool timeout) {
 		}
 		data_len -= written;
 		data_buf += written;
+		sleepMicroseconds(sleep_us);
 	}
 	progressDot();
+}
+
+bool testFrameReconnect(bool timeout) {
+	fprintf(stdout, "Frame reconnect, timeout %i ", timeout);
+	fflush(stdout);
+
+	int tty = openTTYCatchLastCycle();
+
+	// Open the ACE and catch the last keepalive cycle
+	const char data_buf1[] = "\xFF\xAA\x20\x00{\"id\":140,\"method\":";
+	ssize_t data_len1 = sizeof(data_buf1) - 1; // Skip NULL
+	writeTTYData(tty, data_len1, data_buf1, 0);
 
 	// Close the TTY and reconnect
 	if (timeout) {
@@ -202,19 +209,10 @@ bool testFrameReconnect(bool timeout) {
 	tty = waitOpenACE();
 	progressDot();
 
-	// Write other half of test data
-	data_buf = data_buf2;
-	data_len = sizeof(data_buf2) - 1; // Skip NULL
-	while (data_len > 0) {
-		ssize_t written = write(tty, data_buf, data_len);
-		if (written == -1) {
-			fprintf(stderr, "Unable to write data\n");
-			abort();
-		}
-		data_len -= written;
-		data_buf += written;
-	}
-	progressDot();
+	// Write second half of data
+	const char data_buf2[] = "\"get_status\"}\x27\xFF\xFE";
+	ssize_t data_len2 = sizeof(data_buf2) - 1; // Skip NULL
+	writeTTYData(tty, data_len2, data_buf2, 0);
 
 	// Read output
 	ssize_t output = waitTTYClosed(tty);
@@ -239,35 +237,15 @@ bool frameTester(struct frameTestData *data, bool reconnect, int sleep_us) {
 	fprintf(stdout, "%s, reconnect is %i ", data->name, reconnect);
 	fflush(stdout);
 
-	// Open the ACE and catch the last keepalive cycle
-	int tty = waitOpenACE();
-	progressDot();
-	waitTTYClosed(tty);
-	progressDot();
-	close(tty);
-
-	// Open again to start fresh
-	tty = waitOpenACE();
-	progressDot();
+	// Write first half of data
+	int tty = openTTYCatchLastCycle();
 
 	// Sleep so we don't measure from the start of the keepalive
 	sleepMicroseconds(KEEPALIVE_LENGTH_US - SLEEP_LENGTH_US);
 	progressDot();
 
 	// Write test data if requested
-	ssize_t data_len = data->data_len;
-	const char *data_buf = data->data;
-	while (data_len > 0) {
-		ssize_t written = write(tty, data_buf, data_len);
-		if (written == -1) {
-			fprintf(stderr, "Unable to write data\n");
-			abort();
-		}
-		data_len -= written;
-		data_buf += written;
-		sleepMicroseconds(sleep_us);
-	}
-	progressDot();
+	writeTTYData(tty, data->data_len, data->data, sleep_us);
 
 	// Re-open if needed
 	if (reconnect) {
