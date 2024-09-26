@@ -245,9 +245,9 @@ void testFrames(void) {
 }
 
 const int frame_sizes[] = {
-	1356, /* Shouldn't work */
-	1025, /* Should be flaky */
-	1024, /* Should work */
+	1356, // Shouldn't work
+	1025, // Should be flaky
+	1024, // Should work
 };
 
 const int wait_lengths_ms[] = {
@@ -294,8 +294,7 @@ void benchmarkFrames(void) {
 			}
 			bool succeeded2 = benchmarkFrame(size, sleep_us, 2);
 			if (succeeded2) {
-				/* Stop testing timings if this one works twice
-				 */
+				// Stop testing timings if this one works twice
 				break;
 			}
 		}
