@@ -5,6 +5,7 @@
 #define _DEFAULT_SOURCE
 
 #define SECOND_US 1000000
+#define MILLISECOND_US 1000
 #define KEEPALIVE_LENGTH_US (3 * SECOND_US)
 #define SLEEP_LENGTH_US (1 * SECOND_US)
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
@@ -160,7 +161,7 @@ struct frameTestData frameTestDatas[] = {
 #undef HAS_OUTPUT
 #undef END_TEST
 
-void frameTester(struct frameTestData *data, bool reconnect) {
+bool frameTester(struct frameTestData *data, bool reconnect, int sleep_us) {
 	struct timespec time_start;
 	struct timespec time_end;
 	fprintf(stdout, "%s, reconnect is %i ", data->name, reconnect);
@@ -185,14 +186,14 @@ void frameTester(struct frameTestData *data, bool reconnect) {
 	ssize_t data_len = data->data_len;
 	const char *data_buf = data->data;
 	while (data_len > 0) {
-		ssize_t to_write = (data_len > 64) ? 64 : data_len;
-		ssize_t written = write(tty, data_buf, to_write);
+		ssize_t written = write(tty, data_buf, data_len);
 		if (written == -1) {
 			fprintf(stderr, "Unable to write data\n");
 			abort();
 		}
 		data_len -= written;
 		data_buf += written;
+		sleepMicroseconds(sleep_us);
 	}
 	progressDot();
 
@@ -230,18 +231,79 @@ void frameTester(struct frameTestData *data, bool reconnect) {
 	const char *tag = success ? "SUCCESS" : "ERROR";
 	fprintf(stdout, " %s: Keepalive timeout is %i, read %zi bytes\n", tag,
 		keepalive_length, output);
+
+	return success;
 }
 
 void testFrames(void) {
 	fprintf(stdout, "-- FRAME TESTS --\n");
 	for (size_t i = 0; i < ARRAY_SIZE(frameTestDatas); ++i) {
 		struct frameTestData *data = &frameTestDatas[i];
-		frameTester(data, false);
-		frameTester(data, true);
+		frameTester(data, false, 0);
+		frameTester(data, true, 0);
+	}
+}
+
+const int frame_sizes[] = {
+	1356, /* Shouldn't work */
+	1025, /* Should be flaky */
+	1024, /* Should work */
+};
+
+const int wait_lengths_ms[] = {
+	0,
+	10,
+	100,
+};
+
+bool benchmarkFrame(int size, int sleep_us, int attempt) {
+	char name[128];
+	snprintf(name, sizeof(name), "Frame size %i wait %ius, attempt %i",
+		size, sleep_us, attempt);
+	char *frame = malloc(size);
+	if (!frame) {
+		fprintf(stderr, "Unable to alloc frame\n");
+		abort();
+	}
+	const char empty_frame[] = "\xFF\xAA\x00\x00\x00\x00";
+	memset(frame, 0, size);
+	memcpy(frame, empty_frame, sizeof(empty_frame));
+	frame[size - 1] = '\xFE';
+	struct frameTestData data = {
+		.name = name,
+		.data = frame,
+		.data_len = size,
+		.pings_keepalive = true,
+		.has_output = false,
+	};
+	bool success = frameTester(&data, false, sleep_us);
+	free(frame);
+	return success;
+}
+
+void benchmarkFrames(void) {
+	fprintf(stdout, "-- FRAME BENCHMARKS --\n");
+	for (unsigned int i = 0; i < ARRAY_SIZE(frame_sizes); ++i) {
+		int size = frame_sizes[i];
+		for (unsigned int j = 0; j < ARRAY_SIZE(wait_lengths_ms); ++j) {
+			int sleep_ms = wait_lengths_ms[j];
+			int sleep_us = sleep_ms * MILLISECOND_US;
+			bool succeeded1 = benchmarkFrame(size, sleep_us, 1);
+			if (!succeeded1) {
+				continue;
+			}
+			bool succeeded2 = benchmarkFrame(size, sleep_us, 2);
+			if (succeeded2) {
+				/* Stop testing timings if this one works twice
+				 */
+				break;
+			}
+		}
 	}
 }
 
 int main(void) {
 	testFrames();
+	benchmarkFrames();
 	return 0;
 }
