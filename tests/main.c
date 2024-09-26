@@ -10,12 +10,14 @@
 #define SLEEP_LENGTH_US (1 * SECOND_US)
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
@@ -175,7 +177,8 @@ int openTTYCatchLastCycle(void) {
 	return tty;
 }
 
-void writeTTYData(int tty, ssize_t data_len, const char *data_buf, int sleep_us) {
+void writeTTYData(
+	int tty, ssize_t data_len, const char *data_buf, int sleep_us) {
 	while (data_len > 0) {
 		ssize_t written = write(tty, data_buf, data_len);
 		if (written == -1) {
@@ -187,6 +190,74 @@ void writeTTYData(int tty, ssize_t data_len, const char *data_buf, int sleep_us)
 		sleepMicroseconds(sleep_us);
 	}
 	progressDot();
+}
+
+int getTTYUnreadBytes(int tty) {
+	int unread;
+	int rc = ioctl(tty, FIONREAD, &unread);
+	if (rc != 0) {
+		if (errno == EIO) {
+			return -1;
+		}
+		fprintf(stderr, "Unable to get unread TTY bytes!\n");
+		abort();
+	}
+	return unread;
+}
+
+void testFrameHang(int size) {
+	fprintf(stdout, "Frame hang, size %i ", size);
+	fflush(stdout);
+
+	// Open the ACE and catch the last keepalive cycle
+	int tty = openTTYCatchLastCycle();
+
+	// Send a frame header that accidentally hangs
+	char header_buf[4];
+	header_buf[0] = 0xFF;
+	header_buf[1] = 0xAA;
+	header_buf[2] = (size & 0x00FF) >> 0;
+	header_buf[3] = (size & 0xFF00) >> 8;
+	ssize_t header_len = sizeof(header_buf);
+	writeTTYData(tty, header_len, header_buf, 0);
+
+	// Create status buf to test if ACE responds
+	const char status_buf[] = "\xFF\xAA\x20\x00{\"id\":140,\"method\":"
+				  "\"get_status\"}\x27\xFF\xFE";
+	ssize_t status_len = sizeof(status_buf) - 1; // Skip NULL
+
+	int max_tries = 10000;
+	int total_bytes = 0;
+	int try = 0;
+	for (try = 0; try < max_tries; ++try) {
+		ssize_t wrote = write(tty, status_buf, status_len);
+		total_bytes += (wrote > 0) ? wrote : 0;
+		int bytes_ready = getTTYUnreadBytes(tty);
+		if (wrote == -1 || bytes_ready == -1) {
+			// Keepalive timed out, reconnect
+			close(tty);
+			tty = waitOpenACE();
+		}
+		if (bytes_ready > 0) {
+			total_bytes -= status_len;
+			break;
+		}
+	}
+
+	// Cleanup
+	waitTTYClosed(tty);
+	progressDot();
+	close(tty);
+
+	// Print message
+	if (try == max_tries) {
+		fprintf(stderr, " FAIL: Failed to unhang ACE\n");
+	} else {
+		fprintf(stdout,
+			" SUCCESS: Unhanged the ACE, took %i tries and %i "
+			"bytes\n",
+			try, total_bytes);
+	}
 }
 
 bool testFrameReconnect(bool timeout) {
@@ -289,9 +360,9 @@ bool frameTester(struct frameTestData *data, bool reconnect, int sleep_us) {
 void testFrames(void) {
 	fprintf(stdout, "-- FRAME TESTS --\n");
 	for (size_t i = 0; i < ARRAY_SIZE(frameTestDatas); ++i) {
-	     struct frameTestData *data = &frameTestDatas[i];
-	     frameTester(data, false, 0);
-	     frameTester(data, true, 0);
+		struct frameTestData *data = &frameTestDatas[i];
+		frameTester(data, false, 0);
+		frameTester(data, true, 0);
 	}
 	testFrameReconnect(false);
 	testFrameReconnect(true);
@@ -334,6 +405,41 @@ bool benchmarkFrame(int size, int sleep_us, int attempt) {
 	return success;
 }
 
+const int hang_sizes[] = {
+	32, // Should work
+	64, // Should work
+	128, // Should work
+	256, // Should work
+	320, // Should work
+	512, // Should work
+	1024, // Should work
+	2048, // Shouldn't work
+	4096, // Shouldn't work
+	8192, // Shouldn't work
+	16384, // Shouldn't work
+};
+
+int resetACE(void) {
+	// This is just a shell script to toggle a smart switch,
+	// nothing special. Required for destructive tests
+	return system("./ace_reset.sh") == 0;
+}
+
+void testHangs(void) {
+	fprintf(stdout, "-- HANG TESTS --\n");
+	fprintf(stdout, "Testing if we can reset the ACE...\n");
+	if (!resetACE()) {
+		fprintf(stdout, "Guess not, skipping hang tests!\n");
+		return;
+	}
+	fprintf(stdout, "We can! Proceeding with hang tests...\n");
+	for (size_t i = 0; i < ARRAY_SIZE(hang_sizes); ++i) {
+		int size = hang_sizes[i];
+		testFrameHang(size);
+		resetACE();
+	}
+}
+
 void benchmarkFrames(void) {
 	fprintf(stdout, "-- FRAME BENCHMARKS --\n");
 	for (unsigned int i = 0; i < ARRAY_SIZE(frame_sizes); ++i) {
@@ -355,6 +461,7 @@ void benchmarkFrames(void) {
 }
 
 int main(void) {
+	testHangs();
 	testFrames();
 	benchmarkFrames();
 	return 0;

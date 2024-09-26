@@ -4,11 +4,12 @@ Anycubic ACE Pro Protocol
 Transport
 =========
 
-The ACE Pro talks over USB using a USB CDC device, with no flow control. It
-seems to share a single ringle buffer for input and output, and sending packets
-too fast may drop data. Sending packets before waiting for a response may lose
-output the printer was sending. The maximum safe packet size seems to be 1024
-bytes, but this may change in the future.
+The ACE Pro talks over USB using a USB CDC device, with no flow control or data
+integrity checking. It seems to share a single ringle buffer for input and
+output, and sending packets too fast may drop data. Sending packets before
+waiting for a response may lose output the printer was sending. The maximum
+safe amount to send within a small time span size seems to be 1024 bytes, but
+this may change in the future.
 
 Framing
 =======
@@ -21,19 +22,20 @@ Each JSON command is packed in a frame of the following format:
 - 2 bytes: CRC-16/MCRF4XX code of the JSON (little endian)
 - 1 byte: 0xFE
 
-The ACE will disconnect and re-connect if no frame is sent within 3 seconds,
-regardless of whether the frame data has a valid length or CRC. This timeout
-does not reset when a connection is made, so you may be unlucky enough to
-connect just as it times out. Just try again!
+The ACE will disconnect and reconnect if no frame has been completely sent 3
+seconds, regardless of whether the frame data has a valid length or CRC. The
+keepalive does disregard data from the previous connection: Frames can be split
+across multiple connections.
 
 The header is two bytes, so in the case of one of the bytes getting corrupted
 the frame will be ignored, unless the frame contains 0xFF 0xAA in it. If the
 header gets corrupted and frame contains 0xFF 0xAA in it the ACE may freeze for
-a while trying to read a large frame. Re-connecting or letting the keepalive
-timeout does not discard the current frame being parsed and won't fix this.
+a while trying to read a large frame. You can try and prevent this by
+re-generating a payload until the CRC does not match 0xFF 0xAA (little endian).
 
-You can try and prevent this by re-generating a payload until the CRC does not
-match 0xFF 0xAA (little endian).
+If a long frame (greater than 1024 bytes) is requested either by accident or on
+purpose, the ACE seems to freeze and enter an unrecoverable state. No amount of
+data send to complete the frame's payload unfreezes the machine.
 
 RPC
 ===
