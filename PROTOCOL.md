@@ -7,7 +7,8 @@ Transport
 The ACE Pro talks over USB using a USB CDC device, with no flow control. It
 seems to share a single ringle buffer for input and output, and sending packets
 too fast may drop data. Sending packets before waiting for a response may lose
-output the printer was sending.
+output the printer was sending. The maximum safe packet size seems to be 1024
+bytes, but this may change in the future.
 
 Framing
 =======
@@ -28,8 +29,11 @@ connect just as it times out. Just try again!
 The header is two bytes, so in the case of one of the bytes getting corrupted
 the frame will be ignored, unless the frame contains 0xFF 0xAA in it. If the
 header gets corrupted and frame contains 0xFF 0xAA in it the ACE may freeze for
-a while trying to read a large packet. You can work around this hiccup by
-re-generating a payload until the CRC does not match 0xFF 0xAA (little endian).
+a while trying to read a large frame. Re-connecting or letting the keepalive
+timeout does not discard the current frame being parsed and won't fix this.
+
+You can try and prevent this by re-generating a payload until the CRC does not
+match 0xFF 0xAA (little endian).
 
 RPC
 ===
