@@ -1,8 +1,6 @@
 Anycubic ACE Pro Protocol
 =========================
 
-**WARNING**: None of this has been tested and may be entirely wrong.
-
 Transport
 =========
 
@@ -35,6 +33,8 @@ re-generating a payload until the CRC does not match 0xFF 0xAA (little endian).
 
 RPC
 ===
+
+**WARNING**: None of this has been tested and may be entirely wrong.
 
 Each request is sent to the ACE Pro containing the following JSON data:
 
