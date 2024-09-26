@@ -161,6 +161,74 @@ struct frameTestData frameTestDatas[] = {
 #undef HAS_OUTPUT
 #undef END_TEST
 
+bool testFrameReconnect(void) {
+	const char data_buf1[] = "\xFF\xAA\x20\x00{\"id\":140,\"method\":";
+	const char data_buf2[] = "\"get_status\"}\x27\xFF\xFE";
+
+	fprintf(stdout, "Frame reconnect ");
+	fflush(stdout);
+
+	// Open the ACE and catch the last keepalive cycle
+	int tty = waitOpenACE();
+	progressDot();
+	waitTTYClosed(tty);
+	progressDot();
+	close(tty);
+
+	// Open again to start fresh
+	tty = waitOpenACE();
+	progressDot();
+
+	// Write half of test data
+	const char *data_buf = data_buf1;
+	ssize_t data_len = sizeof(data_buf1) - 1; // Skip NULL
+	while (data_len > 0) {
+		ssize_t written = write(tty, data_buf, data_len);
+		if (written == -1) {
+			fprintf(stderr, "Unable to write data\n");
+			abort();
+		}
+		data_len -= written;
+		data_buf += written;
+	}
+	progressDot();
+
+	// Close the TTY and reconnect
+	close(tty);
+	tty = waitOpenACE();
+	progressDot();
+
+	// Write other half of test data
+	data_buf = data_buf2;
+	data_len = sizeof(data_buf2) - 1; // Skip NULL
+	while (data_len > 0) {
+		ssize_t written = write(tty, data_buf, data_len);
+		if (written == -1) {
+			fprintf(stderr, "Unable to write data\n");
+			abort();
+		}
+		data_len -= written;
+		data_buf += written;
+	}
+	progressDot();
+
+	// Read output
+	ssize_t output = waitTTYClosed(tty);
+	progressDot();
+
+	// Cleanup
+	close(tty);
+
+	// Check if the test was successful
+	bool success = (output > 0);
+
+	// Print the results
+	const char *tag = success ? "SUCCESS" : "ERROR";
+	fprintf(stdout, " %s: Read %zi bytes\n", tag, output);
+
+	return success;
+}
+
 bool frameTester(struct frameTestData *data, bool reconnect, int sleep_us) {
 	struct timespec time_start;
 	struct timespec time_end;
@@ -238,10 +306,11 @@ bool frameTester(struct frameTestData *data, bool reconnect, int sleep_us) {
 void testFrames(void) {
 	fprintf(stdout, "-- FRAME TESTS --\n");
 	for (size_t i = 0; i < ARRAY_SIZE(frameTestDatas); ++i) {
-		struct frameTestData *data = &frameTestDatas[i];
-		frameTester(data, false, 0);
-		frameTester(data, true, 0);
+	     struct frameTestData *data = &frameTestDatas[i];
+	     frameTester(data, false, 0);
+	     frameTester(data, true, 0);
 	}
+	testFrameReconnect();
 }
 
 const int frame_sizes[] = {
