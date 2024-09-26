@@ -193,9 +193,10 @@ bool testFrameReconnect(bool timeout) {
 	fprintf(stdout, "Frame reconnect, timeout %i ", timeout);
 	fflush(stdout);
 
+	// Open the ACE and catch the last keepalive cycle
 	int tty = openTTYCatchLastCycle();
 
-	// Open the ACE and catch the last keepalive cycle
+	// Write first half of data
 	const char data_buf1[] = "\xFF\xAA\x20\x00{\"id\":140,\"method\":";
 	ssize_t data_len1 = sizeof(data_buf1) - 1; // Skip NULL
 	writeTTYData(tty, data_len1, data_buf1, 0);
