@@ -161,11 +161,11 @@ struct frameTestData frameTestDatas[] = {
 #undef HAS_OUTPUT
 #undef END_TEST
 
-bool testFrameReconnect(void) {
+bool testFrameReconnect(bool timeout) {
 	const char data_buf1[] = "\xFF\xAA\x20\x00{\"id\":140,\"method\":";
 	const char data_buf2[] = "\"get_status\"}\x27\xFF\xFE";
 
-	fprintf(stdout, "Frame reconnect ");
+	fprintf(stdout, "Frame reconnect, timeout %i ", timeout);
 	fflush(stdout);
 
 	// Open the ACE and catch the last keepalive cycle
@@ -194,7 +194,11 @@ bool testFrameReconnect(void) {
 	progressDot();
 
 	// Close the TTY and reconnect
-	close(tty);
+	if (timeout) {
+		waitTTYClosed(tty);
+	} else {
+		close(tty);
+	}
 	tty = waitOpenACE();
 	progressDot();
 
@@ -310,7 +314,8 @@ void testFrames(void) {
 	     frameTester(data, false, 0);
 	     frameTester(data, true, 0);
 	}
-	testFrameReconnect();
+	testFrameReconnect(false);
+	testFrameReconnect(true);
 }
 
 const int frame_sizes[] = {
