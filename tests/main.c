@@ -463,8 +463,8 @@ void benchmarkFrames(void) {
 }
 
 int main(void) {
-	testHangs();
 	testFrames();
+	testHangs();
 	benchmarkFrames();
 	return 0;
 }
