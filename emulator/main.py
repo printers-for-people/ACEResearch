@@ -111,6 +111,8 @@ async def run_cycle():
     (done, pending) = await asyncio.wait(all_tasks, return_when=asyncio.FIRST_COMPLETED)
     sim_task.cancel()
     watchdog_task.cancel()
+    if sim_task.done() and sim_task.exception():
+        raise sim_task.exception()
 
 
 async def main():
