@@ -29,6 +29,13 @@ PINGS_KEEPALIVE(false)
 HAS_OUTPUT(false)
 END_TEST()
 
+// Test that an interrupted header can't be part of a new header
+NEW_TEST("Interrupted header can't start again")
+DATA("\xFF\xFF\xAA\x00\x00\x00\x00\xFE")
+PINGS_KEEPALIVE(false)
+HAS_OUTPUT(false)
+END_TEST()
+
 // Test that a correct get_status works
 NEW_TEST("Valid frame contents")
 DATA("\xFF\xAA\x20\x00{\"id\":140,\"method\":\"get_status\"}\x27\xFF\xFE")

@@ -105,8 +105,6 @@ class Parser:
                 self.payload = bytearray()
                 self.payload_crc = 0
             else:
-                # TODO: On real hardware can a 0xFF here run back to
-                # maybe_header?
                 self.state = "none"
         elif self.state == "length":
             self.field.append(byte)
