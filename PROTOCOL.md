@@ -20,6 +20,7 @@ Each JSON command is packed in a frame of the following format:
 - 2 bytes: Payload length (little endian)
 - The JSON itself
 - 2 bytes: CRC-16/MCRF4XX code of the JSON (little endian)
+- Any number of bytes, ignored for now
 - 1 byte: 0xFE
 
 The ACE will disconnect and reconnect if no frame has been completely sent 3
