@@ -137,7 +137,7 @@ void progressDot() {
 
 struct frameTestData {
 	const char *name;
-	const char *data;
+	const unsigned char *data;
 	size_t data_len;
 	bool pings_keepalive;
 	bool has_output;
@@ -146,7 +146,7 @@ struct frameTestData {
 #define NEW_TEST(x) \
 	{ \
 		.name = x,
-#define DATA(x) .data = x, .data_len = (sizeof(x) - 1),
+#define DATA(x) .data = (unsigned char *)x, .data_len = (sizeof(x) - 1),
 #define PINGS_KEEPALIVE(x) .pings_keepalive = x,
 #define HAS_OUTPUT(x) .has_output = x,
 #define END_TEST() \
@@ -177,8 +177,8 @@ int openTTYCatchLastCycle(void) {
 	return tty;
 }
 
-void writeTTYData(
-	int tty, ssize_t data_len, const char *data_buf, int sleep_us) {
+void writeTTYData(int tty, ssize_t data_len, const unsigned char *data_buf,
+	int sleep_us) {
 	while (data_len > 0) {
 		ssize_t written = write(tty, data_buf, data_len);
 		if (written == -1) {
@@ -213,7 +213,7 @@ void testFrameHang(int size) {
 	int tty = openTTYCatchLastCycle();
 
 	// Send a frame header that accidentally hangs
-	char header_buf[4];
+	unsigned char header_buf[4];
 	header_buf[0] = 0xFF;
 	header_buf[1] = 0xAA;
 	header_buf[2] = (size & 0x00FF) >> 0;
@@ -222,8 +222,9 @@ void testFrameHang(int size) {
 	writeTTYData(tty, header_len, header_buf, 0);
 
 	// Create status buf to test if ACE responds
-	const char status_buf[] = "\xFF\xAA\x20\x00{\"id\":140,\"method\":"
-				  "\"get_status\"}\x27\xFF\xFE";
+	const unsigned char status_buf[] =
+		"\xFF\xAA\x20\x00{\"id\":140,\"method\":"
+		"\"get_status\"}\x27\xFF\xFE";
 	ssize_t status_len = sizeof(status_buf) - 1; // Skip NULL
 
 	int max_tries = 10000;
@@ -268,7 +269,8 @@ bool testFrameReconnect(bool timeout) {
 	int tty = openTTYCatchLastCycle();
 
 	// Write first half of data
-	const char data_buf1[] = "\xFF\xAA\x20\x00{\"id\":140,\"method\":";
+	const unsigned char data_buf1[] =
+		"\xFF\xAA\x20\x00{\"id\":140,\"method\":";
 	ssize_t data_len1 = sizeof(data_buf1) - 1; // Skip NULL
 	writeTTYData(tty, data_len1, data_buf1, 0);
 
@@ -282,7 +284,7 @@ bool testFrameReconnect(bool timeout) {
 	progressDot();
 
 	// Write second half of data
-	const char data_buf2[] = "\"get_status\"}\x27\xFF\xFE";
+	const unsigned char data_buf2[] = "\"get_status\"}\x27\xFF\xFE";
 	ssize_t data_len2 = sizeof(data_buf2) - 1; // Skip NULL
 	writeTTYData(tty, data_len2, data_buf2, 0);
 
@@ -384,12 +386,12 @@ bool benchmarkFrame(int size, int sleep_us, int attempt) {
 	char name[128];
 	snprintf(name, sizeof(name), "Frame size %i wait %ius, attempt %i",
 		size, sleep_us, attempt);
-	char *frame = malloc(size);
+	unsigned char *frame = malloc(size);
 	if (!frame) {
 		fprintf(stderr, "Unable to alloc frame\n");
 		abort();
 	}
-	const char empty_frame[] = "\xFF\xAA\x00\x00\x00\x00";
+	const unsigned char empty_frame[] = "\xFF\xAA\x00\x00\x00\x00";
 	memset(frame, 0, size);
 	memcpy(frame, empty_frame, sizeof(empty_frame));
 	frame[size - 1] = '\xFE';
