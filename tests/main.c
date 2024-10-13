@@ -22,6 +22,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "mjson.h"
+
 int tryOpenSimulator(void) {
 	static char sim_path[1024];
 	const char *xdg_path = getenv("XDG_RUNTIME_DIR");
@@ -462,7 +464,215 @@ void benchmarkFrames(void) {
 	}
 }
 
+#define JSON_CHECK_NONE 0
+#define JSON_CHECK_DOUBLE 1
+#define JSON_CHECK_STRING 2
+
+struct jsonCheckCondition {
+	const char *name;
+	int type;
+	union {
+		double double_value;
+		const char *string_value;
+	} value;
+};
+
+struct jsonTestData {
+	const char *name;
+	const unsigned char *data;
+	size_t data_len;
+	struct jsonCheckCondition checks[16];
+};
+
+#define NEW_TEST(x) \
+	{ \
+		.name = x,
+#define DATA(x) \
+	.data = (unsigned char *)x, .data_len = (sizeof(x) - 1), .checks = {
+#define CHECK_DOUBLE(field, val) \
+	{.name = field, \
+		.type = JSON_CHECK_DOUBLE, \
+		.value = {.double_value = val}},
+#define CHECK_STRING(field, val) \
+	{.name = field, \
+		.type = JSON_CHECK_STRING, \
+		.value = {.string_value = val}},
+#define END_TEST() \
+	} \
+	} \
+	,
+
+struct jsonTestData jsonTestDatas[] = {
+#include "json_tests.inc"
+};
+
+#undef NEW_TEST
+#undef DATA
+#undef CHECK_DOUBLE
+#undef CHECK_STRING
+#undef END_TEST
+
+bool jsonChecker(const unsigned char *result, struct jsonCheckCondition *cond) {
+	const char *json = (char *)result;
+	int type = cond->type;
+	if (type == JSON_CHECK_NONE) {
+		return true;
+	} else if (type == JSON_CHECK_DOUBLE) {
+		double val;
+		int ret =
+			mjson_get_number(json, strlen(json), cond->name, &val);
+		bool has_number = (ret == 1);
+		bool is_equal = (val == cond->value.double_value);
+		return (has_number && is_equal);
+	} else if (type == JSON_CHECK_STRING) {
+		static char val[1024];
+		int ret = mjson_get_string(
+			json, strlen(json), cond->name, val, sizeof(val));
+		bool has_string = (ret > 0);
+		bool is_equal = (strcmp(val, cond->value.string_value) == 0);
+		return (has_string && is_equal);
+	} else {
+		fprintf(stderr, "Invalid JSON check type");
+		abort();
+	}
+	return false;
+}
+
+// Calculates CRC-16/MCRF4XX
+int calc_crc(const unsigned char *data_buf, size_t data_len) {
+	int crc = 0xFFFF;
+
+	for (size_t i = 0; i < data_len; ++i) {
+		unsigned char byte = data_buf[i];
+		crc ^= byte;
+		for (int j = 0; j < 8; ++j) {
+			if (crc & 1) {
+				crc = (crc >> 1) ^ 0x8408;
+			} else {
+				crc = (crc >> 1);
+			}
+		}
+	}
+
+	return crc;
+}
+
+// TODO: replace assert with abort
+// TODO: comment
+
+#define FRAME_OVERHEAD 7
+
+void writeFrame(
+	int tty, ssize_t payload_len, const unsigned char *payload_buf) {
+	static unsigned char frame_buf[1024];
+	size_t frame_len = payload_len + FRAME_OVERHEAD;
+	int checksum = calc_crc(payload_buf, payload_len);
+	if (frame_len > sizeof(frame_buf)) {
+		fprintf(stderr, "writeFrame buffer too larger\n");
+		abort();
+	}
+	unsigned char *header = frame_buf + 0;
+	unsigned char *payload = frame_buf + 4;
+	unsigned char *trailer = payload + payload_len;
+	header[0] = 0xFF;
+	header[1] = 0xAA;
+	header[2] = (payload_len & 0xFF);
+	header[3] = ((payload_len >> 8) & 0xFF);
+	trailer[0] = (checksum & 0xFF);
+	trailer[1] = ((checksum >> 8) & 0xFF);
+	trailer[2] = 0xFE;
+	memcpy(payload, payload_buf, payload_len);
+	writeTTYData(tty, frame_len, frame_buf, 0);
+}
+
+unsigned char *readFrame(int tty) {
+	static unsigned char frame_buf[1024];
+	ssize_t read_count = read(tty, &frame_buf, 4);
+	if (read_count != 4) {
+		fprintf(stderr, "readFrame can't read TTY\n");
+		abort();
+	}
+	unsigned char *header = frame_buf + 0;
+	unsigned char *payload = frame_buf + 4;
+	if (header[0] != 0xFF || header[1] != 0xAA) {
+		fprintf(stderr, "readFrame invalid header\n");
+		abort();
+	}
+	unsigned int payload_len = (header[3] << 8) | header[2];
+	size_t read_amount = payload_len + FRAME_OVERHEAD;
+	size_t read_left = read_amount - read_count;
+	while (read_left != 0) {
+		unsigned char *buf_pos = frame_buf + read_amount - read_left;
+		read_count = read(tty, buf_pos, read_left);
+		read_left -= read_count;
+		if (read_count < 0) {
+			fprintf(stderr, "readFrame failed to read TTY\n");
+			abort();
+		}
+	}
+	unsigned char *trailer = payload + payload_len;
+	int read_checksum = (trailer[1] << 8) | trailer[0];
+	int checksum = calc_crc(payload, payload_len);
+	if (trailer[2] != 0xFE) {
+		fprintf(stderr, "readFrame invalid trailer\n");
+		abort();
+	}
+	if (checksum != read_checksum) {
+		fprintf(stderr, "readFrame invalid checksum\n");
+		abort();
+	}
+	memmove(frame_buf, payload, payload_len);
+	frame_buf[payload_len] = 0;
+	return frame_buf;
+}
+
+bool jsonTester(struct jsonTestData *data) {
+	fprintf(stdout, "%s ", data->name);
+	fflush(stdout);
+
+	// Open the ACE and catch the last keepalive cycle
+	int tty = openTTYCatchLastCycle();
+	progressDot();
+
+	// Write test data
+	writeFrame(tty, data->data_len, data->data);
+	progressDot();
+
+	// Read response
+	const unsigned char *result = readFrame(tty);
+
+	// Cleanup
+	close(tty);
+	progressDot();
+
+	for (unsigned int i = 0; i < ARRAY_SIZE(data->checks); ++i) {
+		struct jsonCheckCondition *cond = &data->checks[i];
+		bool passed = jsonChecker(result, cond);
+		if (cond->type == JSON_CHECK_NONE) {
+			break;
+		}
+		progressDot();
+		if (!passed) {
+			fprintf(stdout, " ERROR: Check %i, result %s\n", i,
+				result);
+			return false;
+		}
+	}
+
+	fprintf(stdout, " SUCCESS\n");
+	return true;
+}
+
+void testJSON(void) {
+	fprintf(stdout, "-- JSON TESTS --\n");
+	for (size_t i = 0; i < ARRAY_SIZE(jsonTestDatas); ++i) {
+		struct jsonTestData *data = &jsonTestDatas[i];
+		jsonTester(data);
+	}
+}
+
 int main(void) {
+	testJSON();
 	testFrames();
 	testHangs();
 	benchmarkFrames();

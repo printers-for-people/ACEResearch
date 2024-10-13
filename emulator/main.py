@@ -183,7 +183,20 @@ def process_frame(frame):
         payload = json.loads(frame.payload)
     except ValueError:
         return None
-    return b"WE DID IT"
+    return b'{"id":100,"result":{"status":"ready","dryer_status":{"status":"stop","target_temp":0,"duration":0,"remain_time":0},"temp":24,"enable_rfid":1,"fan_speed":7000,"feed_assist_count":0,"cont_assist_time":0.0,"slots":[{"index":0,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":1,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":2,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":3,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1}]},"code":0,"msg":"success"}'
+
+
+def create_frame(data):
+    frame = bytearray()
+    checksum = calc_crc(data)
+    length = len(data)
+    frame.append(0xFF)
+    frame.append(0xAA)
+    frame.extend(int.to_bytes(length, length=2, byteorder="little"))
+    frame.extend(data)
+    frame.extend(int.to_bytes(checksum, length=2, byteorder="little"))
+    frame.append(0xFE)
+    return frame
 
 
 async def run_sim(watchdog_event, parser):
@@ -201,7 +214,8 @@ async def run_sim(watchdog_event, parser):
                 watchdog_event.set()
                 out = process_frame(f)
                 if out is not None:
-                    await sim.write(out)
+                    frame = create_frame(out)
+                    await sim.write(frame)
     finally:
         sim.cleanup()
     return 0

@@ -6,5 +6,5 @@ if test ! -e armv7l-linux-musleabihf-cross; then
 fi
 CC=armv7l-linux-musleabihf-cross/bin/armv7l-linux-musleabihf-gcc
 STRIP=armv7l-linux-musleabihf-cross/bin/armv7l-linux-musleabihf-strip
-$CC -g -Wall -Werror -Wextra -pedantic -std=c11 -static main.c -o main_armv7
+$CC -g -Wall -Werror -Wextra -pedantic -std=c11 -static main.c mjson.c -o main_armv7
 $STRIP main_armv7
