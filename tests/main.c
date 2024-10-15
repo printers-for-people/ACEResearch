@@ -165,17 +165,23 @@ struct frameTestData frameTestDatas[] = {
 #undef HAS_OUTPUT
 #undef END_TEST
 
-int openTTYCatchLastCycle(void) {
+int openTTYCatchLastCycle(bool silent) {
 	// Open the ACE and catch the last keepalive cycle
 	int tty = waitOpenACE();
-	progressDot();
+	if (!silent) {
+		progressDot();
+	}
 	waitTTYClosed(tty);
-	progressDot();
+	if (!silent) {
+		progressDot();
+	}
 	close(tty);
 
 	// Open again to start fresh
 	tty = waitOpenACE();
-	progressDot();
+	if (!silent) {
+		progressDot();
+	}
 	return tty;
 }
 
@@ -191,7 +197,6 @@ void writeTTYData(int tty, ssize_t data_len, const unsigned char *data_buf,
 		data_buf += written;
 		sleepMicroseconds(sleep_us);
 	}
-	progressDot();
 }
 
 int getTTYUnreadBytes(int tty) {
@@ -212,7 +217,7 @@ void testFrameHang(int size) {
 	fflush(stdout);
 
 	// Open the ACE and catch the last keepalive cycle
-	int tty = openTTYCatchLastCycle();
+	int tty = openTTYCatchLastCycle(false);
 
 	// Send a frame header that accidentally hangs
 	unsigned char header_buf[4];
@@ -222,6 +227,7 @@ void testFrameHang(int size) {
 	header_buf[3] = (size & 0xFF00) >> 8;
 	ssize_t header_len = sizeof(header_buf);
 	writeTTYData(tty, header_len, header_buf, 0);
+	progressDot();
 
 	// Create status buf to test if ACE responds
 	const unsigned char status_buf[] =
@@ -268,13 +274,14 @@ bool testFrameReconnect(bool timeout) {
 	fflush(stdout);
 
 	// Open the ACE and catch the last keepalive cycle
-	int tty = openTTYCatchLastCycle();
+	int tty = openTTYCatchLastCycle(false);
 
 	// Write first half of data
 	const unsigned char data_buf1[] =
 		"\xFF\xAA\x20\x00{\"id\":140,\"method\":";
 	ssize_t data_len1 = sizeof(data_buf1) - 1; // Skip NULL
 	writeTTYData(tty, data_len1, data_buf1, 0);
+	progressDot();
 
 	// Close the TTY and reconnect
 	if (timeout) {
@@ -289,6 +296,7 @@ bool testFrameReconnect(bool timeout) {
 	const unsigned char data_buf2[] = "\"get_status\"}\x27\xFF\xFE";
 	ssize_t data_len2 = sizeof(data_buf2) - 1; // Skip NULL
 	writeTTYData(tty, data_len2, data_buf2, 0);
+	progressDot();
 
 	// Read output
 	ssize_t output = waitTTYClosed(tty);
@@ -314,7 +322,7 @@ bool frameTester(struct frameTestData *data, bool reconnect, int sleep_us) {
 	fflush(stdout);
 
 	// Write first half of data
-	int tty = openTTYCatchLastCycle();
+	int tty = openTTYCatchLastCycle(false);
 
 	// Sleep so we don't measure from the start of the keepalive
 	sleepMicroseconds(KEEPALIVE_LENGTH_US - SLEEP_LENGTH_US);
@@ -322,6 +330,7 @@ bool frameTester(struct frameTestData *data, bool reconnect, int sleep_us) {
 
 	// Write test data if requested
 	writeTTYData(tty, data->data_len, data->data, sleep_us);
+	progressDot();
 
 	// Re-open if needed
 	if (reconnect) {
@@ -464,106 +473,26 @@ void benchmarkFrames(void) {
 	}
 }
 
-#define JSON_CHECK_NONE 0
-#define JSON_CHECK_DOUBLE 1
-#define JSON_CHECK_STRING 2
-#define JSON_CHECK_SIZE 3
-
-struct jsonCheckCondition {
-	const char *name;
-	int type;
-	union {
-		double double_value;
-		const char *string_value;
-		int size_value;
-	} value;
-};
-
-struct jsonTestData {
-	const char *name;
-	const unsigned char *data;
-	size_t data_len;
-	struct jsonCheckCondition checks[128];
-};
-
-#define NEW_TEST(x) \
-	{ \
-		.name = x,
-#define DATA(x) \
-	.data = (unsigned char *)x, .data_len = (sizeof(x) - 1), .checks = {
-#define CHECK_DOUBLE(field, val) \
-	{.name = field, \
-		.type = JSON_CHECK_DOUBLE, \
-		.value = {.double_value = val}},
-#define CHECK_STRING(field, val) \
-	{.name = field, \
-		.type = JSON_CHECK_STRING, \
-		.value = {.string_value = val}},
-#define CHECK_SIZE(field, val) \
-	{.name = field, .type = JSON_CHECK_SIZE, .value = {.size_value = val}},
-#define END_TEST() \
-	} \
-	} \
-	,
-
-struct jsonTestData jsonTestDatas[] = {
-#include "json_tests.inc"
-};
-
-#undef NEW_TEST
-#undef DATA
-#undef CHECK_DOUBLE
-#undef CHECK_STRING
-#undef CHECK_SIZE
-#undef END_TEST
-
-bool jsonChecker(const unsigned char *result, struct jsonCheckCondition *cond) {
-	const char *json = (char *)result;
-	int type = cond->type;
-	if (type == JSON_CHECK_NONE) {
-		return true;
-	} else if (type == JSON_CHECK_DOUBLE) {
-		double val;
-		int ret =
-			mjson_get_number(json, strlen(json), cond->name, &val);
-		bool has_number = (ret == 1);
-		bool is_equal = (val == cond->value.double_value);
-		return (has_number && is_equal);
-	} else if (type == JSON_CHECK_STRING) {
-		static char val[1024];
-		int ret = mjson_get_string(
-			json, strlen(json), cond->name, val, sizeof(val));
-		bool has_string = (ret >= 0);
-		bool is_equal = (strcmp(val, cond->value.string_value) == 0);
-		return (has_string && is_equal);
-	} else if (type == JSON_CHECK_SIZE) {
-		const char *obj;
-		int obj_len;
-		int ret = mjson_find((char *)json, strlen((char *)json),
-			cond->name, &obj, &obj_len);
-		if (ret != MJSON_TOK_OBJECT && ret != MJSON_TOK_ARRAY) {
-			return false;
-		}
-		int key_offset;
-		int key_len;
-		int value_offset;
-		int value_len;
-		int value_type;
-		int json_offset = 0;
-		int key_count = -1;
-		do {
-			++key_count;
-			json_offset = mjson_next(obj, obj_len, json_offset,
-				&key_offset, &key_len, &value_offset,
-				&value_len, &value_type);
-		} while (json_offset != 0);
-		bool correct_length = (key_count == cond->value.size_value);
-		return correct_length;
-	} else {
-		fprintf(stderr, "Invalid JSON check type");
-		abort();
+int json_count_keys(const char *json, int json_len, const char *field) {
+	const char *obj;
+	int obj_len;
+	int ret = mjson_find(json, json_len, field, &obj, &obj_len);
+	if (ret != MJSON_TOK_OBJECT && ret != MJSON_TOK_ARRAY) {
+		return false;
 	}
-	return false;
+	int key_offset;
+	int key_len;
+	int value_offset;
+	int value_len;
+	int value_type;
+	int json_offset = 0;
+	int key_count = -1;
+	do {
+		++key_count;
+		json_offset = mjson_next(obj, obj_len, json_offset, &key_offset,
+			&key_len, &value_offset, &value_len, &value_type);
+	} while (json_offset != 0);
+	return key_count;
 }
 
 // Calculates CRC-16/MCRF4XX
@@ -611,6 +540,8 @@ void writeFrame(
 }
 
 unsigned char *readFrame(int tty) {
+	// This function assumes a frame begins at the start of the buffer
+	// and that it's well-formed. Good enough for testing?
 	static unsigned char frame_buf[1024];
 	ssize_t read_count = read(tty, &frame_buf, 4);
 	if (read_count != 4) {
@@ -651,53 +582,278 @@ unsigned char *readFrame(int tty) {
 	return frame_buf;
 }
 
-bool jsonTester(struct jsonTestData *data) {
-	fprintf(stdout, "%s ", data->name);
-	fflush(stdout);
+#define DRYER_STATUS_STOP 1
+#define DRYER_STATUS_DRYING 2
 
-	// Open the ACE and catch the last keepalive cycle
-	int tty = openTTYCatchLastCycle();
-	progressDot();
+struct dryer_status_data {
+	int status;
+	int target_temp;
+	int duration;
+	int remain_time;
+};
 
-	// Write test data
-	writeFrame(tty, data->data_len, data->data);
-	progressDot();
+struct filament_slot_data {
+	char _nothing;
+};
 
-	// Read response
-	const unsigned char *result = readFrame(tty);
+struct status_data {
+	struct dryer_status_data dryer_status;
+	int temp;
+	int fan_speed;
+	struct filament_slot_data slots[4];
+};
 
-	// Cleanup
+int getStatus(struct status_data *data) {
+	// Grab the JSON response
+	const char *frame = "{\"id\":100,\"method\":\"get_status\"}";
+	int tty = openTTYCatchLastCycle(true);
+	writeFrame(tty, strlen(frame), (const unsigned char *)frame);
+	const char *result = (const char *)readFrame(tty);
+	int result_len = strlen(result);
 	close(tty);
-	progressDot();
 
-	for (unsigned int i = 0; i < ARRAY_SIZE(data->checks); ++i) {
-		struct jsonCheckCondition *cond = &data->checks[i];
-		bool passed = jsonChecker(result, cond);
-		if (cond->type == JSON_CHECK_NONE) {
-			break;
-		}
-		progressDot();
-		if (!passed) {
-			fprintf(stdout, " ERROR: Check %i, result %s\n", i,
-				result);
+	int key_count = json_count_keys(result, result_len, "$");
+	if (key_count != 4) {
+		fprintf(stderr, "getStatus: field count isn't 4");
+		goto fail_message;
+	}
+
+	double id_value;
+	int ret = mjson_get_number(result, result_len, "$.id", &id_value);
+	if (ret != 1 || (int)id_value != 100) {
+		fprintf(stderr, "getStatus: id was not 100");
+		goto fail_message;
+	}
+
+	static char msg_value[16];
+	ret = mjson_get_string(
+		result, result_len, "$.msg", msg_value, sizeof(msg_value));
+	if (ret < 0 || strcmp(msg_value, "success") != 0) {
+		fprintf(stderr, "getStatus: msg was not success");
+		goto fail_message;
+	}
+
+	double code_value;
+	ret = mjson_get_number(result, result_len, "$.code", &code_value);
+	if (ret != 1 || (int)code_value != 0) {
+		fprintf(stderr, "getStatus: code was not 0");
+		goto fail_message;
+	}
+
+	key_count = json_count_keys(result, result_len, "$.result");
+	if (key_count != 8) {
+		fprintf(stderr, "getStatus: result field count isn't 8");
+		goto fail_message;
+	}
+
+	static char status_value[16];
+	ret = mjson_get_string(result, result_len, "$.result.status",
+		status_value, sizeof(status_value));
+	if (ret < 0 || strcmp(status_value, "ready") != 0) {
+		fprintf(stderr, "getStatus: result status was not ready");
+		goto fail_message;
+	}
+
+	double temp_value;
+	ret = mjson_get_number(
+		result, result_len, "$.result.temp", &temp_value);
+	if (ret != 1 || (temp_value < 0 || temp_value > 500)) {
+		fprintf(stderr, "getStatus: result.temp out of range");
+		goto fail_message;
+	}
+	data->temp = (int)temp_value;
+
+	double enable_rfid_value;
+	ret = mjson_get_number(
+		result, result_len, "$.result.enable_rfid", &enable_rfid_value);
+	if (ret != 1 || enable_rfid_value != 1) {
+		fprintf(stderr, "getStatus: result.enable_rfid not 1");
+		goto fail_message;
+	}
+
+	double fan_speed_value;
+	ret = mjson_get_number(
+		result, result_len, "$.result.fan_speed", &fan_speed_value);
+	if (ret != 1 || (fan_speed_value < 0 || fan_speed_value > 10000)) {
+		fprintf(stderr, "getStatus: result.fan_speed out of range");
+		goto fail_message;
+	}
+	data->fan_speed = (int)fan_speed_value;
+
+	double feed_assist_count_value;
+	ret = mjson_get_number(result, result_len, "$.result.feed_assist_count",
+		&feed_assist_count_value);
+	if (ret != 1 || (int)feed_assist_count_value != 0) {
+		fprintf(stderr,
+			"getStatus: result.feed_assist_count was not 0");
+		goto fail_message;
+	}
+
+	double cont_assist_time_value;
+	ret = mjson_get_number(result, result_len, "$.result.cont_assist_time",
+		&cont_assist_time_value);
+	if (ret != 1 || (int)cont_assist_time_value != 0) {
+		fprintf(stderr, "getStatus: result.cont_assist_time was not 0");
+		goto fail_message;
+	}
+
+	struct dryer_status_data *dryer_data = &data->dryer_status;
+
+	key_count =
+		json_count_keys(result, result_len, "$.result.dryer_status");
+	if (key_count != 4) {
+		fprintf(stderr,
+			"getStatus: result.dryer_status field count isn't 4");
+		goto fail_message;
+	}
+
+	static char dryer_status_value[16];
+	ret = mjson_get_string(result, result_len,
+		"$.result.dryer_status.status", dryer_status_value,
+		sizeof(dryer_status_value));
+	if (ret < 0) {
+		fprintf(stderr,
+			"getStatus: result.dryer_status.status not found");
+		goto fail_message;
+	}
+
+	if (strcmp(dryer_status_value, "stop") == 0) {
+		dryer_data->status = DRYER_STATUS_STOP;
+	} else if (strcmp(dryer_status_value, "drying") == 0) {
+		dryer_data->status = DRYER_STATUS_DRYING;
+	} else {
+		fprintf(stderr,
+			"getStatus: result.dryer_status.status not recognized");
+		goto fail_message;
+	}
+
+	double dryer_target_temp_value;
+	ret = mjson_get_number(result, result_len,
+		"$.result.dryer_status.target_temp", &dryer_target_temp_value);
+	if (ret != 1 ||
+		(dryer_target_temp_value < 0 ||
+			dryer_target_temp_value > 500)) {
+		fprintf(stderr,
+			"getStatus: result.dryer_status.target_temp out of "
+			"range");
+		goto fail_message;
+	}
+	dryer_data->target_temp = (int)dryer_target_temp_value;
+
+	double dryer_duration_value;
+	ret = mjson_get_number(result, result_len,
+		"$.result.dryer_status.duration", &dryer_duration_value);
+	if (ret != 1) {
+		fprintf(stderr,
+			"getStatus: result.dryer_status.duration out of range");
+		goto fail_message;
+	}
+	dryer_data->duration = (int)dryer_duration_value;
+
+	double dryer_remain_time_value;
+	ret = mjson_get_number(result, result_len,
+		"$.result.dryer_status.remain_time", &dryer_remain_time_value);
+	if (ret != 1) {
+		fprintf(stderr,
+			"getStatus: result.dryer_status.remain_time out of "
+			"range");
+		goto fail_message;
+	}
+	dryer_data->remain_time = (int)dryer_remain_time_value;
+
+	key_count = json_count_keys(result, result_len, "$.result.slots");
+	if (key_count != 4) {
+		fprintf(stderr, "getStatus: result.slots field count isn't 4");
+		goto fail_message;
+	}
+
+	for (int i = 0; i < 4; ++i) {
+		struct filament_slot_data *slot_data = &data->slots[i];
+		slot_data->_nothing = 0;
+
+		char field[32];
+		snprintf(field, sizeof(field), "$.result.slots[%i]", i);
+		const char *slot;
+		int slot_len;
+		int ret =
+			mjson_find(result, result_len, field, &slot, &slot_len);
+		if (ret != MJSON_TOK_OBJECT) {
+			fprintf(stderr, "getStatus: Couldn't find field %s",
+				field);
+			goto fail_message;
 			return false;
 		}
+
+		double index_value;
+		ret = mjson_get_number(slot, slot_len, "$.index", &index_value);
+		if (ret != 1 || (int)index_value != i) {
+			fprintf(stderr, "getStatus: slot %i not in order?\n",
+				i);
+			goto fail_message;
+		}
+
+		static char status_value[16];
+		ret = mjson_get_string(slot, slot_len, "$.status", status_value,
+			sizeof(status_value));
+		if (ret < 0 || strcmp(status_value, "ready") != 0) {
+			fprintf(stderr, "getStatus: slot status was not ready");
+			goto fail_message;
+		}
+
+		static char sku_value[128];
+		ret = mjson_get_string(
+			slot, slot_len, "$.sku", sku_value, sizeof(sku_value));
+		if (ret != 0) {
+			fprintf(stderr, "getStatus: slot sku is not empty");
+			goto fail_message;
+		}
+
+		static char type_value[128];
+		ret = mjson_get_string(slot, slot_len, "$.type", type_value,
+			sizeof(type_value));
+		if (ret != 0) {
+			fprintf(stderr, "getStatus: slot type is not empty");
+			goto fail_message;
+		}
+
+		key_count = json_count_keys(slot, slot_len, "$.color");
+		if (key_count != 3) {
+			fprintf(stderr, "getStatus: slots color count isn't 3");
+			goto fail_message;
+		}
+
+		for (int i = 0; i < 3; ++i) {
+			char field[32];
+			snprintf(field, sizeof(field), "$.color[%i]", i);
+			double color_value;
+			ret = mjson_get_number(
+				slot, slot_len, field, &color_value);
+			if (ret != 1 || color_value != 0) {
+				fprintf(stderr, "getStatus: color %i is not 0",
+					i);
+				goto fail_message;
+			}
+		}
+
+		double rfid_value;
+		ret = mjson_get_number(slot, slot_len, "$.rfid", &rfid_value);
+		if (ret != 1 || rfid_value != 1) {
+			fprintf(stderr, "getStatus: slot rfid not 1");
+			goto fail_message;
+		}
 	}
 
-	fprintf(stdout, " SUCCESS\n");
-	return true;
-}
+	return 0;
 
-void testJSON(void) {
-	fprintf(stdout, "-- JSON TESTS --\n");
-	for (size_t i = 0; i < ARRAY_SIZE(jsonTestDatas); ++i) {
-		struct jsonTestData *data = &jsonTestDatas[i];
-		jsonTester(data);
-	}
+fail_message:
+	fprintf(stderr, ", result was %s\n", result);
+	abort();
+	return 1;
 }
 
 int main(void) {
-	testJSON();
+	struct status_data data = {0};
+	getStatus(&data);
 	testFrames();
 	testHangs();
 	benchmarkFrames();
