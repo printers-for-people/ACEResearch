@@ -169,7 +169,7 @@ Response params:
 - slots: Array of dictionary of slot status
 
 Dryer status dictionary:
-- status: "stop"
+- status: "stop" or "drying"
 - target_temp: 0
 - duration: 0
 - remain_time: 0
