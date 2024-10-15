@@ -528,7 +528,7 @@ bool jsonChecker(const unsigned char *result, struct jsonCheckCondition *cond) {
 		static char val[1024];
 		int ret = mjson_get_string(
 			json, strlen(json), cond->name, val, sizeof(val));
-		bool has_string = (ret > 0);
+		bool has_string = (ret >= 0);
 		bool is_equal = (strcmp(val, cond->value.string_value) == 0);
 		return (has_string && is_equal);
 	} else {
