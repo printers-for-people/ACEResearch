@@ -585,9 +585,6 @@ int calc_crc(const unsigned char *data_buf, size_t data_len) {
 	return crc;
 }
 
-// TODO: replace assert with abort
-// TODO: comment
-
 #define FRAME_OVERHEAD 7
 
 void writeFrame(
