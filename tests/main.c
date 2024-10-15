@@ -467,6 +467,7 @@ void benchmarkFrames(void) {
 #define JSON_CHECK_NONE 0
 #define JSON_CHECK_DOUBLE 1
 #define JSON_CHECK_STRING 2
+#define JSON_CHECK_SIZE 3
 
 struct jsonCheckCondition {
 	const char *name;
@@ -474,6 +475,7 @@ struct jsonCheckCondition {
 	union {
 		double double_value;
 		const char *string_value;
+		int size_value;
 	} value;
 };
 
@@ -497,6 +499,8 @@ struct jsonTestData {
 	{.name = field, \
 		.type = JSON_CHECK_STRING, \
 		.value = {.string_value = val}},
+#define CHECK_SIZE(field, val) \
+	{.name = field, .type = JSON_CHECK_SIZE, .value = {.size_value = val}},
 #define END_TEST() \
 	} \
 	} \
@@ -510,6 +514,7 @@ struct jsonTestData jsonTestDatas[] = {
 #undef DATA
 #undef CHECK_DOUBLE
 #undef CHECK_STRING
+#undef CHECK_SIZE
 #undef END_TEST
 
 bool jsonChecker(const unsigned char *result, struct jsonCheckCondition *cond) {
@@ -531,6 +536,29 @@ bool jsonChecker(const unsigned char *result, struct jsonCheckCondition *cond) {
 		bool has_string = (ret >= 0);
 		bool is_equal = (strcmp(val, cond->value.string_value) == 0);
 		return (has_string && is_equal);
+	} else if (type == JSON_CHECK_SIZE) {
+		const char *obj;
+		int obj_len;
+		int ret = mjson_find((char *)json, strlen((char *)json),
+			cond->name, &obj, &obj_len);
+		if (ret != MJSON_TOK_OBJECT && ret != MJSON_TOK_ARRAY) {
+			return false;
+		}
+		int key_offset;
+		int key_len;
+		int value_offset;
+		int value_len;
+		int value_type;
+		int json_offset = 0;
+		int key_count = -1;
+		do {
+			++key_count;
+			json_offset = mjson_next(obj, obj_len, json_offset,
+				&key_offset, &key_len, &value_offset,
+				&value_len, &value_type);
+		} while (json_offset != 0);
+		bool correct_length = (key_count == cond->value.size_value);
+		return correct_length;
 	} else {
 		fprintf(stderr, "Invalid JSON check type");
 		abort();
