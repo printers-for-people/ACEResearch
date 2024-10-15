@@ -481,7 +481,7 @@ struct jsonTestData {
 	const char *name;
 	const unsigned char *data;
 	size_t data_len;
-	struct jsonCheckCondition checks[16];
+	struct jsonCheckCondition checks[128];
 };
 
 #define NEW_TEST(x) \
