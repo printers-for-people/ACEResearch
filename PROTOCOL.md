@@ -20,7 +20,7 @@ Each JSON command is packed in a frame of the following format:
 - 2 bytes: Payload length (little endian)
 - The JSON itself
 - 2 bytes: CRC-16/MCRF4XX code of the JSON (little endian)
-- Any number of bytes, ignored for now
+- Any number of bytes, ignored for now (do not add)
 - 1 byte: 0xFE
 
 The ACE will disconnect and reconnect if no frame has been completely sent 3
@@ -47,7 +47,7 @@ Each request is sent to the ACE Pro containing the following JSON data:
 
 - id: The message number
 - method: A string identifying the method
-- params: Dictionary of method-specific parameters
+- params: Dictionary of method-specific parameters, omit if empty
 
 Each response is sent from the ACE containing the following JSON data:
 
@@ -112,6 +112,8 @@ Response params:
 
 - id: 0
 - slots: 4
+- SN: "" (not seen on real hardware)
+- date: "" (not seen on real hardware)
 - model: "Anycubic Color Engine Pro"
 - firmware: "V1.3.82"
 - boot_firmware: "V1.0.1"
@@ -130,21 +132,22 @@ Response data:
 Response params:
 
 - index: Filament slot number
-- sku: ""
-- brand: ""
-- type: ""
-- color: [0,0,0]
-- rfid: 1
+- sku: "ABCDEF-01"
+- brand: "FakeBrand"
+- type: "PLA", "PLA+", "TPU", "ABS", "PETG", etc
+- color: [0,0,0] (Red, green, blue decimal values 0-255)
+- rfid: 0 (Information not found), 1 (Failed to identify), 2 (Identified), 3 (Identifying)
+- source: 0 (Unknown), 1 (From RFID), 2 (User defined), 3 (Empty), omitted if empty
 - extruder_temp: Dictionary of temperature data
 - hotbed_temp: Dictionary of temperature data
-- diameter: 0.00
+- diameter: 1.75 (Filament diameter in millimeters)
 - total: 330
 - current: 0
 
 Temperature data dictionary:
 
-- min: 0
-- max: 0
+- min: Temperature in Celsius, integer
+- max: Temperature in Celsius, integer
 
 get_status
 ----------
@@ -159,37 +162,40 @@ Response data:
 
 Response params:
 
-- status: "ready"
+- status: "startup", "busy", "ready", "stuck"? (guessing)
+- action: "feeding", "unwinding", "shifting" (changing gears)
 - dryer_status: Dictionary of dryer status
-- temp: Dryer temperature in celsius
+- temp: Dryer temperature in Celsius
 - enable_rfid: 1
-- fan_speed: 7000
+- fan_speed: 7000 (RPM)
 - feed_assist_count: 0
-- cont_assist_time: 0.0
+- cont_assist_time: 0.0 (Continous feeding time in milliseconds)
 - slots: Array of dictionary of slot status
 
 Dryer status dictionary:
-- status: "stop" or "drying"
-- target_temp: 0
-- duration: 0
-- remain_time: 0
+- status: "stop", "drying", "heater_err"
+- target_temp: 60
+- duration: 300 (Minutes)
+- remain_time: 50 (Minutes)
 
 Slot status dictionary:
 - index: Filament slot number
-- status: "ready"
+- status: "empty", "ready", "runout"
 - sku: ""
 - type: ""
 - color: [0,0,0]
-- rfid: 1
+- rfid: 0 (Information not found), 1 (Failed to identify), 2 (Identified), 3 (Identifying)
+- source: 0 (Unknown), 1 (From RFID), 2 (User defined), 3 (Empty), omitted if empty
+- redirect: unknown string (Redirect other consumables when empty)
 
 drying
 ------
 
 Request params:
 
-- temp: Dryer temperature in celsius
-- fan_speed: 7000
-- duration: 240
+- temp: Dryer temperature in Celsius
+- fan_speed: 7000 (RPM)
+- duration: 240 (minutes)
 
 Response data:
 - msg: "drying"
@@ -220,7 +226,7 @@ Request params:
 - index: Filament slot number
 - length: 300, 70
 - speed: 10, 15
-- mode: 0
+- mode: 0 (normal mode), 1 (enhanced mode)
 
 Response data:
 - msg: "success"
