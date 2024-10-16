@@ -112,8 +112,6 @@ Response params:
 
 - id: 0
 - slots: 4
-- SN: "" (not seen on real hardware)
-- date: "" (not seen on real hardware)
 - model: "Anycubic Color Engine Pro"
 - firmware: "V1.3.82"
 - boot_firmware: "V1.0.1"
@@ -135,9 +133,8 @@ Response params:
 - sku: "ABCDEF-01"
 - brand: "FakeBrand"
 - type: "PLA", "PLA+", "TPU", "ABS", "PETG", etc
-- color: [0,0,0] (Red, green, blue decimal values 0-255)
+- color: [0, 0, 0] (Red, green, blue decimal values 0-255)
 - rfid: 0 (Information not found), 1 (Failed to identify), 2 (Identified), 3 (Identifying)
-- source: 0 (Unknown), 1 (From RFID), 2 (User defined), 3 (Empty), omitted if empty
 - extruder_temp: Dictionary of temperature data
 - hotbed_temp: Dictionary of temperature data
 - diameter: 1.75 (Filament diameter in millimeters)
@@ -162,31 +159,31 @@ Response data:
 
 Response params:
 
-- status: "startup", "busy", "ready", "stuck"? (guessing)
+- status: "ready", "busy"
 - action: "feeding", "unwinding", "shifting" (changing gears)
 - dryer_status: Dictionary of dryer status
 - temp: Dryer temperature in Celsius
 - enable_rfid: 1
-- fan_speed: 7000 (RPM)
+- fan_speed: Fan speed in RPM
 - feed_assist_count: 0
 - cont_assist_time: 0.0 (Continous feeding time in milliseconds)
 - slots: Array of dictionary of slot status
 
 Dryer status dictionary:
-- status: "stop", "drying", "heater_err"
+- status: "stop", "drying"
 - target_temp: 60
 - duration: 300 (Minutes)
 - remain_time: 50 (Minutes)
 
 Slot status dictionary:
 - index: Filament slot number
-- status: "empty", "ready", "runout"
-- sku: ""
-- type: ""
-- color: [0,0,0]
+- status: "ready"
+- sku: "ABCDEF-01"
+- brand: "FakeBrand"
+- type: "PLA", "PLA+", "TPU", "ABS", "PETG", etc
+- color: [0, 0, 0] (Red, green, blue decimal values 0-255)
 - rfid: 0 (Information not found), 1 (Failed to identify), 2 (Identified), 3 (Identifying)
 - source: 0 (Unknown), 1 (From RFID), 2 (User defined), 3 (Empty), omitted if empty
-- redirect: unknown string (Redirect other consumables when empty)
 
 drying
 ------
