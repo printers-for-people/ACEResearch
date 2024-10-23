@@ -1,4 +1,8 @@
 #!/bin/sh
+if test ! -e main.c; then
+	echo "Run this script from the tests directory"
+	exit 1
+fi
 if test ! -e armv7l-linux-musleabihf-cross; then
 	echo "Downloading toolchain..."
 	wget https://musl.cc/armv7l-linux-musleabihf-cross.tgz
