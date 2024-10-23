@@ -439,6 +439,7 @@ void testHangs(void) {
 		return;
 	}
 	fprintf(stdout, "We can! Proceeding with hang tests...\n");
+	fprintf(stdout, "Note: These are informational only, FAILs are not a problem.\n");
 	for (size_t i = 0; i < ARRAY_SIZE(hang_sizes); ++i) {
 		int size = hang_sizes[i];
 		testFrameHang(size);
@@ -448,6 +449,7 @@ void testHangs(void) {
 
 void benchmarkFrames(void) {
 	fprintf(stdout, "-- FRAME BENCHMARKS --\n");
+	fprintf(stdout, "Note: These are informational only, FAILs are not a problem.\n");
 	for (unsigned int i = 0; i < ARRAY_SIZE(frame_sizes); ++i) {
 		int size = frame_sizes[i];
 		for (unsigned int j = 0; j < ARRAY_SIZE(wait_lengths_ms); ++j) {
