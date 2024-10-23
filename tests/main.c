@@ -577,21 +577,25 @@ unsigned char *readFrame(int tty) {
 	return frame_buf;
 }
 
-bool testRPCID(int id) {
-	// Prepare the frame
-	char frame[128];
-	snprintf(frame, sizeof(frame), "{\"id\":%i,\"method\":\"get_status\"}", id);
-	fprintf(stdout, "Testing ID %i ", id);
-	fflush(stdout);
-
-	// Send and receive frames
+const char *doRPC(const char *frame) {
 	int tty = openTTYCatchLastCycle();
 	writeFrame(tty, strlen(frame), (const unsigned char *)frame);
 	progressDot();
 	const char *result = (const char *)readFrame(tty);
 	progressDot();
-	int result_len = strlen(result);
 	close(tty);
+	return result;
+}
+
+bool testRPCID(int id) {
+	fprintf(stdout, "Testing ID %i ", id);
+	fflush(stdout);
+
+	// Get status with a specific ID
+	char frame[128];
+	snprintf(frame, sizeof(frame), "{\"id\":%i,\"method\":\"get_status\"}", id);
+	const char *result = doRPC(frame);
+	int result_len = strlen(result);
 	progressDot();
 
 	// Check the new value
@@ -629,8 +633,32 @@ void testRPCIDs(void) {
 	}
 }
 
+void printInfo(void) {
+	fprintf(stdout, "-- TEST INFO --\n");
+	const char* result;
+
+	fprintf(stdout, "Test date: Write your info here\n");
+	fprintf(stdout, "ACE description: Write your info here\n");
+	fprintf(stdout, "Tests version: Write your info here\n");
+
+	fprintf(stdout, "Getting ACE info ");
+	const char* frameInfo = "{\"id\":0,\"method\":\"get_info\"}";
+	result = doRPC(frameInfo);
+	fprintf(stdout, " %s\n", result);
+
+	fprintf(stdout, "Getting filament info ");
+	const char* frameFilamentInfo = "{\"id\":0,\"method\":\"get_filament_info\"}";
+	result = doRPC(frameFilamentInfo);
+	fprintf(stdout, " %s\n", result);
+
+	fprintf(stdout, "Getting status ");
+	const char* frameStatus = "{\"id\":0,\"method\":\"get_status\"}";
+	result = doRPC(frameStatus);
+	fprintf(stdout, " %s\n", result);
+}
 
 int main(void) {
+	printInfo();
 	testRPCIDs();
 	testFrames();
 	testHangs();
