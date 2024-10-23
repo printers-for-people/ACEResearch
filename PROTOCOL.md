@@ -183,7 +183,6 @@ Slot status dictionary:
 - type: "PLA", "PLA+", "TPU", "ABS", "PETG", etc
 - color: [0, 0, 0] (Red, green, blue decimal values 0-255)
 - rfid: 0 (Information not found), 1 (Failed to identify), 2 (Identified), 3 (Identifying)
-- source: 0 (Unknown), 1 (From RFID), 2 (User defined), 3 (Empty), omitted if empty
 
 drying
 ------
