@@ -103,7 +103,7 @@ void getTime(struct timespec *time) {
 	clockid_t clock = CLOCK_BOOTTIME;
 	int err = clock_gettime(clock, time);
 	if (err != 0) {
-		fprintf(stderr, "unable to get time?\n");
+		fprintf(stdout, "unable to get time?\n");
 		abort();
 	}
 }
@@ -184,7 +184,7 @@ void writeTTYData(int tty, ssize_t data_len, const unsigned char *data_buf,
 	while (data_len > 0) {
 		ssize_t written = write(tty, data_buf, data_len);
 		if (written == -1) {
-			fprintf(stderr, "Unable to write data\n");
+			fprintf(stdout, "Unable to write data\n");
 			abort();
 		}
 		data_len -= written;
@@ -200,7 +200,7 @@ int getTTYUnreadBytes(int tty) {
 		if (errno == EIO) {
 			return -1;
 		}
-		fprintf(stderr, "Unable to get unread TTY bytes!\n");
+		fprintf(stdout, "Unable to get unread TTY bytes!\n");
 		abort();
 	}
 	return unread;
@@ -254,7 +254,7 @@ void testFrameHang(int size) {
 
 	// Print message
 	if (try == max_tries) {
-		fprintf(stderr, " FAIL: Failed to unhang ACE\n");
+		fprintf(stdout, " FAIL: Failed to unhang ACE\n");
 	} else {
 		fprintf(stdout,
 			" SUCCESS: Unhanged the ACE, took %i tries and %i "
@@ -393,7 +393,7 @@ bool benchmarkFrame(int size, int sleep_us, int attempt) {
 		size, sleep_us, attempt);
 	unsigned char *frame = malloc(size);
 	if (!frame) {
-		fprintf(stderr, "Unable to alloc frame\n");
+		fprintf(stdout, "Unable to alloc frame\n");
 		abort();
 	}
 	const unsigned char empty_frame[] = "\xFF\xAA\x00\x00\x00\x00";
@@ -515,7 +515,7 @@ void writeFrame(
 	size_t frame_len = payload_len + FRAME_OVERHEAD;
 	int checksum = calc_crc(payload_buf, payload_len);
 	if (frame_len > sizeof(frame_buf)) {
-		fprintf(stderr, "writeFrame buffer too larger\n");
+		fprintf(stdout, "writeFrame buffer too larger\n");
 		abort();
 	}
 	unsigned char *header = frame_buf + 0;
@@ -538,13 +538,13 @@ unsigned char *readFrame(int tty) {
 	static unsigned char frame_buf[1024];
 	ssize_t read_count = read(tty, &frame_buf, 4);
 	if (read_count != 4) {
-		fprintf(stderr, "readFrame can't read TTY\n");
+		fprintf(stdout, "readFrame can't read TTY\n");
 		abort();
 	}
 	unsigned char *header = frame_buf + 0;
 	unsigned char *payload = frame_buf + 4;
 	if (header[0] != 0xFF || header[1] != 0xAA) {
-		fprintf(stderr, "readFrame invalid header\n");
+		fprintf(stdout, "readFrame invalid header\n");
 		abort();
 	}
 	unsigned int payload_len = (header[3] << 8) | header[2];
@@ -555,7 +555,7 @@ unsigned char *readFrame(int tty) {
 		read_count = read(tty, buf_pos, read_left);
 		read_left -= read_count;
 		if (read_count < 0) {
-			fprintf(stderr, "readFrame failed to read TTY\n");
+			fprintf(stdout, "readFrame failed to read TTY\n");
 			abort();
 		}
 	}
@@ -563,11 +563,11 @@ unsigned char *readFrame(int tty) {
 	int read_checksum = (trailer[1] << 8) | trailer[0];
 	int checksum = calc_crc(payload, payload_len);
 	if (trailer[2] != 0xFE) {
-		fprintf(stderr, "readFrame invalid trailer\n");
+		fprintf(stdout, "readFrame invalid trailer\n");
 		abort();
 	}
 	if (checksum != read_checksum) {
-		fprintf(stderr, "readFrame invalid checksum\n");
+		fprintf(stdout, "readFrame invalid checksum\n");
 		abort();
 	}
 	memmove(frame_buf, payload, payload_len);
@@ -597,15 +597,15 @@ bool testRPCID(int id) {
 	int ret = mjson_get_number(result, result_len, "$.id", &id_value);
 	progressDot();
 	if (ret != 1) {
-		fprintf(stderr, " ERROR: No ID value, frame %s, result: %s\n", frame, result);
+		fprintf(stdout, " ERROR: No ID value, frame %s, result: %s\n", frame, result);
 		return false;
 	}
 	if ((int)id_value != id) {
-		fprintf(stderr, " ERROR: ID was %f, frame %s, result: %s\n", id_value, frame, result);
+		fprintf(stdout, " ERROR: ID was %f, frame %s, result: %s\n", id_value, frame, result);
 		return false;
 	}
 
-	fprintf(stderr, " SUCCESS\n");
+	fprintf(stdout, " SUCCESS\n");
 	return true;
 }
 
