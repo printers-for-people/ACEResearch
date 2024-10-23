@@ -439,7 +439,9 @@ void testHangs(void) {
 		return;
 	}
 	fprintf(stdout, "We can! Proceeding with hang tests...\n");
-	fprintf(stdout, "Note: These are informational only, ERRORs are not a problem.\n");
+	fprintf(stdout,
+		"Note: These are informational only, ERRORs are not a "
+		"problem.\n");
 	for (size_t i = 0; i < ARRAY_SIZE(hang_sizes); ++i) {
 		int size = hang_sizes[i];
 		testFrameHang(size);
@@ -449,7 +451,9 @@ void testHangs(void) {
 
 void benchmarkFrames(void) {
 	fprintf(stdout, "-- FRAME BENCHMARKS --\n");
-	fprintf(stdout, "Note: These are informational only, ERRORs are not a problem.\n");
+	fprintf(stdout,
+		"Note: These are informational only, ERRORs are not a "
+		"problem.\n");
 	for (unsigned int i = 0; i < ARRAY_SIZE(frame_sizes); ++i) {
 		int size = frame_sizes[i];
 		for (unsigned int j = 0; j < ARRAY_SIZE(wait_lengths_ms); ++j) {
@@ -593,7 +597,8 @@ bool testRPCID(int id) {
 
 	// Get status with a specific ID
 	char frame[128];
-	snprintf(frame, sizeof(frame), "{\"id\":%i,\"method\":\"get_status\"}", id);
+	snprintf(frame, sizeof(frame), "{\"id\":%i,\"method\":\"get_status\"}",
+		id);
 	const char *result = doRPC(frame);
 	int result_len = strlen(result);
 	progressDot();
@@ -603,11 +608,13 @@ bool testRPCID(int id) {
 	int ret = mjson_get_number(result, result_len, "$.id", &id_value);
 	progressDot();
 	if (ret != 1) {
-		fprintf(stdout, " ERROR: No ID value, frame %s, result: %s\n", frame, result);
+		fprintf(stdout, " ERROR: No ID value, frame %s, result: %s\n",
+			frame, result);
 		return false;
 	}
 	if ((int)id_value != id) {
-		fprintf(stdout, " ERROR: ID was %f, frame %s, result: %s\n", id_value, frame, result);
+		fprintf(stdout, " ERROR: ID was %f, frame %s, result: %s\n",
+			id_value, frame, result);
 		return false;
 	}
 
@@ -635,24 +642,25 @@ void testRPCIDs(void) {
 
 void printInfo(void) {
 	fprintf(stdout, "-- TEST INFO --\n");
-	const char* result;
+	const char *result;
 
 	fprintf(stdout, "Test date: Write your info here\n");
 	fprintf(stdout, "ACE description: Write your info here\n");
 	fprintf(stdout, "Tests version: Write your info here\n");
 
 	fprintf(stdout, "Getting ACE info ");
-	const char* frameInfo = "{\"id\":0,\"method\":\"get_info\"}";
+	const char *frameInfo = "{\"id\":0,\"method\":\"get_info\"}";
 	result = doRPC(frameInfo);
 	fprintf(stdout, " %s\n", result);
 
 	fprintf(stdout, "Getting filament info ");
-	const char* frameFilamentInfo = "{\"id\":0,\"method\":\"get_filament_info\"}";
+	const char *frameFilamentInfo =
+		"{\"id\":0,\"method\":\"get_filament_info\"}";
 	result = doRPC(frameFilamentInfo);
 	fprintf(stdout, " %s\n", result);
 
 	fprintf(stdout, "Getting status ");
-	const char* frameStatus = "{\"id\":0,\"method\":\"get_status\"}";
+	const char *frameStatus = "{\"id\":0,\"method\":\"get_status\"}";
 	result = doRPC(frameStatus);
 	fprintf(stdout, " %s\n", result);
 }

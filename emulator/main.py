@@ -183,9 +183,11 @@ def process_frame(frame):
         payload = json.loads(frame.payload)
     except ValueError:
         return None
-    result = json.loads('{"id":100,"result":{"status":"ready","dryer_status":{"status":"stop","target_temp":0,"duration":0,"remain_time":0},"temp":24,"enable_rfid":1,"fan_speed":7000,"feed_assist_count":0,"cont_assist_time":0.0,"slots":[{"index":0,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":1,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":2,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":3,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1}]},"code":0,"msg":"success"}')
-    result['id'] = payload['id']
-    return json.dumps(result).encode('utf-8')
+    result = json.loads(
+        '{"id":100,"result":{"status":"ready","dryer_status":{"status":"stop","target_temp":0,"duration":0,"remain_time":0},"temp":24,"enable_rfid":1,"fan_speed":7000,"feed_assist_count":0,"cont_assist_time":0.0,"slots":[{"index":0,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":1,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":2,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":3,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1}]},"code":0,"msg":"success"}'
+    )
+    result["id"] = payload["id"]
+    return json.dumps(result).encode("utf-8")
 
 
 def create_frame(data):
