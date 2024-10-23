@@ -1,0 +1,71 @@
+-- TEST INFO --
+Test date: 2024-10-23T15:58:36+11:00
+ACE description: Anycubic ACE connected to rooted Kobra 3
+Tests version: Git 64496fb61fcda8046e8fdf65be77817276eba616
+Getting ACE info ..... {"id":0,"code":0,"result":{"id":1,"slots":4,"model":"Anycubic Color Engine Pro","firmware":"V1.3.73","boot_firmware":"V1.0.1"},"msg":"success"}
+Getting filament info ..... {"id":0,"code":0,"result":{"index":0,"sku":"AHPLGY-102","brand":"AC","type":"PLA","color":[99,102,106],"rfid":2,"extruder_temp":{"min":200,"max":210},"hotbed_temp":{"min":50,"max":60},"diameter":1.75,"total":330,"current":0},"msg":"success"}
+Getting status ..... {"id":0,"result":{"status":"ready","dryer_status":{"status":"stop","target_temp":0,"duration":0,"remain_time":0},"temp":23,"enable_rfid":1,"fan_speed":7000,"feed_assist_count":0,"cont_assist_time":0.0,"slots":[{"index":0,"status":"ready","sku":"AHPLGY-102","type":"PLA","color":[99,102,106],"rfid":2},{"index":1,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":2,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1},{"index":3,"status":"ready","sku":"","type":"","color":[0,0,0],"rfid":1}]},"code":0,"msg":"success"}
+-- RPC IDs TESTS --
+Testing ID 100 ....... SUCCESS
+Testing ID 100 ....... SUCCESS
+Testing ID 99 ....... SUCCESS
+Testing ID 0 ....... SUCCESS
+Testing ID -1 ....... SUCCESS
+Testing ID 50 ....... SUCCESS
+Testing ID 101 ....... SUCCESS
+-- FRAME TESTS --
+No data does nothing, reconnect is 0 ....... SUCCESS: Keepalive timeout is 1163367, read 0 bytes
+No data does nothing, reconnect is 1 ....... SUCCESS: Keepalive timeout is 1188240, read 0 bytes
+Garbage data does nothing, reconnect is 0 ....... SUCCESS: Keepalive timeout is 1153279, read 0 bytes
+Garbage data does nothing, reconnect is 1 ....... SUCCESS: Keepalive timeout is 1145980, read 0 bytes
+Empty frame, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3209881, read 0 bytes
+Empty frame, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3238739, read 0 bytes
+Interrupted header, reconnect is 0 ....... SUCCESS: Keepalive timeout is 1207894, read 0 bytes
+Interrupted header, reconnect is 1 ....... SUCCESS: Keepalive timeout is 1181141, read 0 bytes
+Interrupted header can't start again, reconnect is 0 ....... SUCCESS: Keepalive timeout is 1207833, read 0 bytes
+Interrupted header can't start again, reconnect is 1 ....... SUCCESS: Keepalive timeout is 1144591, read 0 bytes
+Valid frame contents, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3255966, read 556 bytes
+Valid frame contents, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3239500, read 556 bytes
+Invalid frame contents, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3256984, read 0 bytes
+Invalid frame contents, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3205850, read 0 bytes
+Checksum is header, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3255604, read 557 bytes
+Checksum is header, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3194659, read 557 bytes
+Checksum includes trailer, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3256316, read 558 bytes
+Checksum includes trailer, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3195354, read 558 bytes
+Checksum 0x0000, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3221390, read 558 bytes
+Checksum 0x0000, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3181719, read 0 bytes
+Bytes are unused after checksum, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3245352, read 556 bytes
+Bytes are unused after checksum, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3240443, read 556 bytes
+Extra bytes in payload fail, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3198061, read 0 bytes
+Extra bytes in payload fail, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3185060, read 0 bytes
+Two frames in one packet, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3246168, read 556 bytes
+Two frames in one packet, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3239482, read 556 bytes
+One frame over multiple packets, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3245044, read 556 bytes
+One frame over multiple packets, reconnect is 1 ....... SUCCESS: Keepalive timeout is 3184322, read 556 bytes
+Frame reconnect, timeout 0 ....... SUCCESS: Read 556 bytes
+Frame reconnect, timeout 1 ....... SUCCESS: Read 556 bytes
+-- HANG TESTS --
+Testing if we can reset the ACE...
+We can! Proceeding with hang tests...
+Note: These are informational only, FAILs are not a problem.
+Frame hang, size 32 ..... FAIL: Failed to unhang ACE
+Frame hang, size 64 ..... FAIL: Failed to unhang ACE
+Frame hang, size 128 ..... FAIL: Failed to unhang ACE
+Frame hang, size 256 ..... FAIL: Failed to unhang ACE
+Frame hang, size 320 ..... FAIL: Failed to unhang ACE
+Frame hang, size 512 ..... FAIL: Failed to unhang ACE
+Frame hang, size 1024 ..... FAIL: Failed to unhang ACE
+Frame hang, size 2048 ..... FAIL: Failed to unhang ACE
+Frame hang, size 4096 ..... FAIL: Failed to unhang ACE
+Frame hang, size 8192 ..... FAIL: Failed to unhang ACE
+Frame hang, size 16384 ..... FAIL: Failed to unhang ACE
+-- FRAME BENCHMARKS --
+Note: These are informational only, FAILs are not a problem.
+Frame size 1356 wait 0us, attempt 1, reconnect is 0 ....... ERROR: Keepalive timeout is 1165747, read 0 bytes
+Frame size 1356 wait 10000us, attempt 1, reconnect is 0 ....... ERROR: Keepalive timeout is 1152086, read 0 bytes
+Frame size 1356 wait 100000us, attempt 1, reconnect is 0 ....... ERROR: Keepalive timeout is 1051212, read 0 bytes
+Frame size 1025 wait 0us, attempt 1, reconnect is 0 ....... ERROR: Keepalive timeout is 1162403, read 0 bytes
+Frame size 1025 wait 10000us, attempt 1, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3200242, read 0 bytes
+Frame size 1025 wait 10000us, attempt 2, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3244870, read 0 bytes
+Frame size 1024 wait 0us, attempt 1, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3255898, read 0 bytes
+Frame size 1024 wait 0us, attempt 2, reconnect is 0 ....... SUCCESS: Keepalive timeout is 3247497, read 0 bytes
