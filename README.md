@@ -1,3 +1,24 @@
+I'm not longer working on this
+==============================
+
+Hi, I (Jookia) am no longer working on this. There's two reasons.
+
+The first is that the there's a Klipper plugin now! See the [DuckACE
+project](https://github.com/utkabobr/DuckACE/) for more information.
+It was always my intention to develop a Klipper plugin and leave it to
+users to use it how they wanted and report issues.
+
+The second larger one is that I don't have this hardware, so I can't do
+much more in reverse engineering on the finer details I'd like to do.
+This stuff doesn't matter too much for end users, but it would be things
+like documenting the hardware. Maybe even a Klipper port. These things
+aren't feasible to do remotely.
+
+**This project is not abandoned**, I'm happy to merge contributions and
+try and help figure things out. I just can't provide much value myself.
+
+Thanks for understanding!
+
 Anycubic ACE Pro Reverse Engineering
 ====================================
 
