@@ -43,6 +43,7 @@ Related projects:
 - How to root your Kobra 3: https://github.com/systemik/Kobra3-Firmware
 - How to root your Kobra 3 (old): https://github.com/Bushmills/Anycubic-Kobra-3-roote
 - Custom Kobra 3 firmware: https://github.com/utkabobr/DuckPro-Kobra3
+- Script for making NFC tags: https://github.com/EnderPy/AnycubicNFCScript
 
 Other discussions:
 
