@@ -61,6 +61,7 @@ project (Alphabetical order):
 - Bushmills for for helping root the Kobra 3
 - Spitko for providing access to an ACE for development
 - wiltwong for cross-compiling debugging binaries
+- Tiago-3D for providing internal photos of the ACE
 
 Development instructions
 ------------------------

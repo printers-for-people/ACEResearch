@@ -3,6 +3,12 @@ Anycubic ACE Pro Hardware
 
 **WARNING**: None of this has been tested and may be entirely wrong.
 
+Photos
+======
+
+The [photos directory)(./photos) contains a wide array of internal photos taken
+by Tiago-3D. These are released under the CC0.
+
 USB
 ===
 
